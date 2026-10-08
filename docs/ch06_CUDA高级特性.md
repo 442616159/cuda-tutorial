@@ -47,7 +47,7 @@
 
 | 特性 | 最低 CC | 额外硬性要求 | 不支持时的表现 |
 |---|---|---|---|
-| **动态并行**（设备端 `<<<>>>`） | **3.5** | 必须 `-rdc=true`；设备端 `malloc` 还看堆配额 | 不加 `-rdc` 编译直接报错；加了但卡不支持则启动报 `cudaErrorNotSupported` 或静默不执行 |
+| **动态并行**（设备端 `<<<>>>`） | **3.5** | 必须 `-rdc=true`；设备端 `malloc` 还看堆配额；**CUDA 13 起目标架构必须低于 `sm_90`**（`-arch=sm_80`），Windows x64 还要加 `-DCUDA_FORCE_CDP1_IF_SUPPORTED` | 不加 `-rdc` 编译直接报错；加了但卡不支持则启动报 `cudaErrorNotSupported` 或静默不执行 |
 | **WMMA（FP16）** | **7.0**（Volta） | `-arch=sm_70`+，`#include <mma.h>` | 编译期失败：`fragment` 无法实例化 / `wmma` 未定义 |
 | **WMMA（INT8）** | **7.2**（Turing） | `-arch=sm_72`+ | 同上 |
 | **WMMA（TF32 / BF16 / FP64）** | **8.0**（Ampere） | `precision::tf32` / `__nv_bfloat16` | 编译期失败 |
@@ -56,14 +56,14 @@
 | **`cuda::pipeline`（libcu++）** | 8.0 才有真异步 | `<cuda/pipeline>`，C++17 | 低架构退化为同步路径 |
 | **线程块集群 / DSM** | **9.0**（Hopper） | Toolkit **≥ 11.8**（`cudaLaunchKernelEx`）；`-arch=sm_90` | 旧 Toolkit 编不过；新 Toolkit + 旧卡启动返回 `cudaErrorInvalidValue` / `cudaErrorNotSupported` |
 | **`cudaMallocManaged`** | 2.0（基本托管） | — | 老架构不支持 GPU 超配（oversubscription） |
-| **按需页迁移 / `cudaMemPrefetchAsync`** | **6.0**（Pascal） | 需 `cudaDevAttrConcurrentManagedAccess` | 预取返回 `cudaErrorInvalidValue`；退化成一次性整段迁移 |
-| **`cudaMemAdvise`** | **6.0** | `SetAccessedBy` 需并发托管访问 | 调用失败，或建议被驱动忽略（它只是「提示」） |
+| **按需页迁移 / `cudaMemPrefetchAsync`** | **6.0**（Pascal） | 需 `cudaDevAttrConcurrentManagedAccess`；**CUDA 13 起第 3 个参数由 `dstDevice` 变成 `cudaMemLocation`，并新增 `flags`** | 预取返回 `cudaErrorInvalidValue`；退化成一次性整段迁移 |
+| **`cudaMemAdvise`** | **6.0** | `SetAccessedBy` 需并发托管访问；**CUDA 13 起第 4 个参数由 `deviceId` 变成 `cudaMemLocation`** | 调用失败，或建议被驱动忽略（它只是「提示」） |
 | **VMM（`cuMemCreate` / `cuMemMap`）** | **6.0** + 驱动 **≥ 440** | `CU_DEVICE_ATTRIBUTE_VIRTUAL_ADDRESS_MANAGEMENT_SUPPORTED`；链接 `-lcuda` | 属性查询返回 0；`cuMemCreate` 返回 `CUDA_ERROR_NOT_SUPPORTED` |
 | **多 GPU P2P** | ≥ 2 张卡，CC ≥ 2.0 + 64 位进程 + UVA | 主板/PCIe 拓扑，NVLink 或同 PCIe 交换机 | `cudaDeviceCanAccessPeer` 返回 **0**（不是报错），必须走主机中转 |
 | **CUDA Graphs（基础）** | 3.5 | Toolkit ≥ 10.0 | `cudaStreamBeginCapture` 返回错误 |
-| **Graph 条件 / 循环节点** | 见下 | **Toolkit ≥ 12.3** | 用 `CUDART_VERSION >= 12030` 编译期裁剪；实例化失败返回 `cudaErrorNotSupported` |
+| **Graph 条件 / 循环节点** | 见下 | **Toolkit ≥ 12.3（示例现状：12.3 ～ 12.x）** | CUDA 12.3 ～ 12.x 用 `cudaGraphConditionalNodeParams` + `cudaGraphAddConditionalNode`；**CUDA 13 已整体移除这套 API**，示例尚未移植，用 `#if CUDART_VERSION >= 12030 && CUDART_VERSION < 13000` 裁掉后在 CUDA 13 上只打印「跳过」说明；实例化失败返回 `cudaErrorNotSupported` |
 
-> **关于条件/循环节点**：它的**主要门槛是 Toolkit 版本**（12.3 才引入这套 API），示例用 `#if CUDART_VERSION >= 12030` 做编译期保护。此外设备侧条件求值依赖设备端图启动机制，**在很老的架构上实例化可能返回 `cudaErrorNotSupported`**。习惯是：**凡是返回 `cudaError_t` 的 Graph API 都检查返回值**。参见 [NVIDIA graphConditionalNodes 样例](https://github.com/NVIDIA/cuda-samples/blob/master/Samples/3_CUDA_Features/graphConditionalNodes/README.md)。
+> **关于条件/循环节点（务必看清现状）**：这套控制流节点在 **CUDA 12.3 引入**，门槛主要是 Toolkit 版本，示例用 `#if CUDART_VERSION >= 12030` 做编译期保护。但 **CUDA 13 把 `cudaGraphAddConditionalNode` / `cudaGraphConditionalNodeParams` / `cudaGraphCondTypeElse` 这一整套接口移除了**，替代品是 `cudaGraphAddNode` + `cudaGraphNodeParams.type = cudaGraphNodeTypeConditional` 配合 `cudaConditionalNodeParams`（字段 `handle` / `type` / `size` / `phGraph_out`）。**本示例代码目前还没有移植到新 API**，所以它被限制在 `#if CUDART_VERSION >= 12030 && CUDART_VERSION < 13000`，**在 CUDA 13 上只会打印一句「跳过」说明，不会演示条件节点**——想跑这一段，请用 CUDA 12.3 ～ 12.x 的工具链，或自己按新 API 重写。此外设备侧条件求值依赖设备端图启动机制，**在很老的架构上实例化可能返回 `cudaErrorNotSupported`**。习惯是：**凡是返回 `cudaError_t` 的 Graph API 都检查返回值**。参见 [NVIDIA graphConditionalNodes 样例](https://github.com/NVIDIA/cuda-samples/blob/master/Samples/3_CUDA_Features/graphConditionalNodes/README.md)。
 
 **怎么查自己的卡**——本章所有示例都用了同一个套路：
 
@@ -82,14 +82,14 @@ if (prop.major < 8) {
 
 | 目录 | 文件 | 讲什么 | 关键 CC | 特殊编译参数 |
 |---|---|---|---|---|
-| `code/lessons/ch06_advanced/dynparallel/` | `dynparallel.cu` | 设备端启动、递归归约、设备端 `malloc` | ≥ 3.5 | `-rdc=true` |
+| `code/lessons/ch06_advanced/dynparallel/` | `dynparallel.cu` | 设备端启动、递归归约、设备端 `malloc` | ≥ 3.5（CUDA 13 上须 `< sm_90`） | `-rdc=true`（Windows x64 再加 `-DCUDA_FORCE_CDP1_IF_SUPPORTED`） |
 | `code/lessons/ch06_advanced/wmma/` | `wmma_gemm.cu` | FP16 输入 + FP32 累加的 WMMA 矩阵乘 | ≥ 7.0 | `-arch=sm_70`+ |
 | `code/lessons/ch06_advanced/cpasync/` | `cpasync_gemm.cu` | `cp.async` 双缓冲流水线 GEMM | ≥ 8.0（低架构退化） | `-arch=sm_80` |
 | `code/lessons/ch06_advanced/cluster/` | `cluster_dsm.cu` | 集群内跨块归约、`map_shared_rank` | ≥ 9.0 | `-arch=sm_90` |
 | `code/lessons/ch06_advanced/unified/` | `unified_advise.cu` | `cudaMemAdvise` 四条建议 + 预取对比 | ≥ 6.0 | `-arch=sm_70` |
 | `code/lessons/ch06_advanced/vmm/` | `vmm_alloc.cu` | VMM 四步：预留 / 创建 / 映射 / 授权 | ≥ 6.0 + 驱动 440 | `-lcuda` |
 | `code/lessons/ch06_advanced/multigpu/` | `p2p.cu` | P2P 能力矩阵、`cudaMemcpyPeer`、远端 kernel | 需 ≥ 2 张卡 | — |
-| `code/lessons/ch06_advanced/graphs_advanced/` | `graph_advanced.cu` | 显式构图、If/Else 条件节点、While 循环节点 | Toolkit ≥ 12.3 | `-arch=sm_70` |
+| `code/lessons/ch06_advanced/graphs_advanced/` | `graph_advanced.cu` | 显式构图、If/Else 条件节点、While 循环节点（**CUDA 13 上跳过控制流段**） | Toolkit ≥ 12.3 且 < 13.0 | `-arch=sm_70` |
 
 ### 0.5 学习建议
 
@@ -120,21 +120,31 @@ if (prop.major < 8) {
 - 它**占用显存并为每个 launch 分配资源**，默认待启动队列深度有限（`cudaLimitDevRuntimePendingLaunchCount`），队列满时**要么阻塞、要么丢弃启动**，这是动态并行最经典的死锁来源。
 - `nsys` 时间线上会出现**大量细碎 kernel**，调度开销会吃掉一切收益。
 
-**两个硬性条件**（缺一不可）：
+**硬性条件**（CUDA 13 上是四条，缺一不可）：
 
 ```text
 ① 目标架构 CC ≥ 3.5
 ② 编译时必须加 -rdc=true（Relocatable Device Code，可重定位设备代码）
+③ 目标架构必须低于 sm_90（用 -arch=sm_80）：CUDA 13 起设备端的
+   cudaDeviceSynchronize() 只在 __CUDA_ARCH__ < 900 时才提供
+④ Windows x64 上必须再定义 -DCUDA_FORCE_CDP1_IF_SUPPORTED（见下）
 ```
+
+**为什么③和④是 CUDA 13 才多出来的？** CUDA 13 的 `cuda_device_runtime_api.h` 把设备端 `cudaDeviceSynchronize()` 的声明保护在 `#if (__CUDA_ARCH__ < 900) && (defined(CUDA_FORCE_CDP1_IF_SUPPORTED) || (defined(_WIN32) && !defined(_WIN64)))` 里。于是：**Hopper / Blackwell（`sm_90` / `sm_100` / `sm_120`）上根本没有这个设备端声明**，一调用就报 `calling a __host__ function from a __global__ function is not allowed`（那些卡上应改用 CDP2 的 `cudaGridDependencySynchronize`）；**Windows x64 同时定义了 `_WIN32` 和 `_WIN64`**，所以第二个条件不成立，必须显式定义那个宏才能拿到声明——Linux 上则不需要。**另外不要图省事写 `-arch=native`**：RTX 40/50 系会被探测成 `sm_89` / `sm_120`，其中 `sm_120` 直接编译失败。
 
 `-rdc=true` 为什么必须加？因为设备端 `<<<>>>` 需要把「子 kernel 的设备函数符号」延迟到**链接期**才确定，这要求设备代码不能像默认那样「每个 `.cu` 单独编成完整 cubin」，而要像普通 C++ 一样分「编译 → 链接」两步；链接完成后还要把设备端运行时库 `cudadevrt` 链进去。
 
 ```bash
-nvcc -O3 -arch=sm_70 -rdc=true dynparallel.cu -o dynparallel
+# Windows x64 + CUDA 13（本教程的主要平台，也是文件头里给出的命令）：
+nvcc -O3 -arch=sm_80 -rdc=true -DCUDA_FORCE_CDP1_IF_SUPPORTED dynparallel.cu -o dynparallel
+# Linux 上不需要那个宏：
+nvcc -O3 -arch=sm_80 -rdc=true dynparallel.cu -o dynparallel
 # 现代 nvcc 在 -rdc=true 时会自动链接 cudadevrt；
 # 若报 undefined reference to '__cudaRegisterLinkedBinary...'，手动补上：
-nvcc -O3 -arch=sm_70 -rdc=true dynparallel.cu -o dynparallel -lcudadevrt
+nvcc -O3 -arch=sm_80 -rdc=true -DCUDA_FORCE_CDP1_IF_SUPPORTED dynparallel.cu -o dynparallel -lcudadevrt
 ```
+
+> **为什么是 `-arch=sm_80` 而不是 `sm_70`？** 两者在 CUDA 13 上都满足「`__CUDA_ARCH__ < 900`」这一条，`sm_80` 只是文件头选定的默认值（覆盖 Ampere 及以后所有低于 `sm_90` 的卡）。真正**不能**用的是 `sm_90` / `sm_100` / `sm_120` 和 `-arch=native`。
 
 **设备端 `cudaDeviceSynchronize()` 的行为与 host 端不同**（高频面试题）：
 
@@ -162,6 +172,15 @@ nvcc -O3 -arch=sm_70 -rdc=true dynparallel.cu -o dynparallel -lcudadevrt
 
 **严谨定义**：**张量核心（Tensor Core）** 是一组专门执行**小矩阵乘加**（`D = A × B + C`）的硬件单元，自 Volta（CC 7.0）起进入 NVIDIA GPU。**WMMA（Warp Matrix Multiply Accumulate）** 是 CUDA 暴露给程序员的 C++ API，位于 `nvcuda::wmma` 命名空间，头文件 `<mma.h>`。
 
+> **写代码前先记住这两行**（本章 `wmma_gemm.cu` 正是补上了第二行才编得过）：
+>
+> ```cpp
+> #include <mma.h>
+> using namespace nvcuda;   // ⚠ 必须：wmma::fragment 等名字都来自 nvcuda::wmma
+> ```
+>
+> `wmma` 只是 `nvcuda::wmma` 的简写。少了 `using namespace nvcuda;`，`wmma::fragment` 就会报 `identifier "wmma" is undefined`——要么补上这行，要么把每个名字都写成 `nvcuda::wmma::fragment`。这是原示例最容易漏、也最容易被误判成「架构不对」的一处编译错误。
+
 WMMA 有三个必须记住的特点：
 
 1. **它是 warp 级操作**：一次 `mma_sync` 由**一整个 warp 的 32 个线程协作**完成，不是「每个线程算自己那一格」。第 1 章你熟悉的「线程 ↔ 元素」映射在这里不成立。
@@ -181,6 +200,9 @@ store_matrix_sync  —— 把结果写回内存
 **`fragment` 的模板参数逐个解释**：
 
 ```cpp
+#include <mma.h>
+using namespace nvcuda;   // 必须：下面才能直接写 wmma::fragment
+
 wmma::fragment<wmma::matrix_a, 16, 16, 16, __half, wmma::row_major> a_frag;
 //              ─────┬──────  ─┬─ ─┬─ ─┬─  ───┬──  ────────┬─────────
 //                   │        │   │   │      │              │
@@ -202,6 +224,7 @@ wmma::fragment<wmma::matrix_a, 16, 16, 16, __half, wmma::row_major> a_frag;
 **leading dimension（`ldm`）是什么？** 就是**「下一行（或下一列）的第一个元素，距离当前行首有多少个元素」**。对行主序矩阵，`ldm` = 一行有多少个元素；但如果你只取大矩阵里的一个子块，`ldm` 依然是**大矩阵的整行长度**，而不是子块宽度。这是最常见的错误来源：
 
 ```cpp
+// 前置：已 #include <mma.h> 且 using namespace nvcuda;
 // A 是 M×K 的行主序矩阵，取第 warpM 个 16×16 子块、从第 k 列开始
 wmma::load_matrix_sync(a_frag, a + (size_t)warpM * WMMA_M * K + k, K);
 //                                                                  ↑ 这里是 K，不是 WMMA_K
@@ -343,14 +366,27 @@ attrs[0].val.clusterDim.x = 2; attrs[0].val.clusterDim.y = 1; attrs[0].val.clust
 | `cudaMemAdviseSetAccessedBy` | 允许某个设备**直接访问**（走 NVLink / PCIe），**不迁移** | 偶尔访问、不值得整段搬的数据 |
 | `cudaMemAdviseUnsetXXX` | 撤销上面的建议 | 数据用途变了 |
 
-`cudaMemPrefetchAsync(ptr, bytes, dstDevice, stream)` 的语义是「**现在就开始搬，但不阻塞调用它的线程**」，所以要在同一个流里同步才能保证搬完；`dstDevice` 传 `cudaCpuDeviceId` 就是搬回主机。
+`cudaMemPrefetchAsync` 的语义是「**现在就开始搬，但不阻塞调用它的线程**」，所以要在同一个流里同步才能保证搬完。它的签名在 **CUDA 13 变了**：
+
+```cpp
+// CUDA 12.x 及更早：第 3 个参数是目标设备号
+cudaMemPrefetchAsync(ptr, bytes, dstDevice, stream);      // dstDevice = cudaCpuDeviceId 即搬回主机
+
+// CUDA 13 起：第 3 个参数换成 cudaMemLocation，并多了 flags
+cudaMemLocation loc{};
+loc.type = cudaMemLocationTypeDevice;   // 搬到某张卡；type = cudaMemLocationTypeHost 就是搬回主机
+loc.id   = dstDevice;
+cudaMemPrefetchAsync(ptr, bytes, loc, /*flags=*/0, stream);
+```
+
+> **别踩这个坑**：`cudaMemPrefetchAsync(ptr, bytes, cudaCpuDeviceId, stream)` 在 CUDA 13 上编不过——原来传设备号的位置现在要传 `cudaMemLocation`，而且 `cudaMemLocationTypeHost` 才是「搬回主机」的表达方式。示例代码用 `#if CUDART_VERSION >= 13000` 把两个分支都写出来了。
 
 **典型性能陷阱（值得抄在笔记本上）**：
 
 1. **首次访问永远最慢**。页错误 + 迁移通常几十微秒，而且是**按页**触发的（2 MB 大页就是一次搬 2 MB）。
 2. **CPU 和 GPU 交替访问同一块托管内存 = 灾难**，每次换边都是一次迁移。对策：`cudaMemAdvise` + 预取，或者干脆别用托管内存。
 3. **迭代型算法（CG、Jacobi、训练循环）里数据本来就常驻 GPU**，最省事的做法是**别用 Unified Memory，直接 `cudaMalloc`**。托管内存的价值在**原型阶段省掉手工 memcpy**，不在最终性能。
-4. **在 CPU 上访问 GPU 常驻的托管页，同样触发页错误**。读结果前先 `cudaMemPrefetchAsync(..., cudaCpuDeviceId, ...)`。
+4. **在 CPU 上访问 GPU 常驻的托管页，同样触发页错误**。读结果前先把数据搬回主机——CUDA 12.x 写 `cudaMemPrefetchAsync(..., cudaCpuDeviceId, ...)`，CUDA 13 写 `cudaMemLocation{ cudaMemLocationTypeHost, 0 }`。
 5. **用 `nsys` 看页错误**：`nsys profile --stats=true ./unified_advise`，报告里的 Unified Memory 一节会列出页错误次数和迁移字节数。
 
 ### 1.6 虚拟内存管理（VMM）：把地址和物理内存解耦
@@ -420,15 +456,18 @@ attrs[0].val.clusterDim.x = 2; attrs[0].val.clusterDim.y = 1; attrs[0].val.clust
             └──> [ Else节点 ]  条件 == 0 时执行（phGraph = bodyFalse）
 ```
 
-**严谨定义与关键 API**（主要门槛是 **Toolkit ≥ 12.3**）：
+**严谨定义与关键 API**（引入门槛是 **Toolkit ≥ 12.3**，且**这套接口在 CUDA 13 上已被移除**，见下表与下方提示框）：
 
 | API | 作用 |
 |---|---|
 | `cudaGraphConditionalHandleCreate(&h, graph, defaultVal, flags)` | 在主图里创建**条件句柄**并给默认值 |
-| `cudaGraphAddKernelNode(&n, graph, deps, nDeps, &params)` | 普通 kernel 节点（这里是「求值」节点） |
-| `cudaGraphAddConditionalNode(&n, graph, deps, nDeps, &cp)` | 添加**条件节点**；`cp.type` = `cudaGraphCondTypeIf` / `...Else` / `...While`，`cp.phGraph` 指向**体图** |
+| `cudaGraphAddKernelNode(&n, graph, deps, nDeps, &params)` | 普通 kernel 节点（这里是「求值」节点）——CUDA 13 上仍然可用 |
+| **CUDA 12.3 ～ 12.x**：`cudaGraphAddConditionalNode(&n, graph, deps, nDeps, &cp)` | 添加**条件节点**；`cp.type` = `cudaGraphCondTypeIf` / `...Else` / `...While`，`cp.phGraph` 指向**体图**（结构体类型 `cudaGraphConditionalNodeParams`） |
+| **CUDA 13 起的新写法**：`cudaGraphAddNode(&n, graph, deps, nullptr, nDeps, &p)` | 用 `cudaGraphNodeParams` 添加节点：令 `p.type = cudaGraphNodeTypeConditional`，再填 `p.conditional`（类型 `cudaConditionalNodeParams`，字段 `handle` / `type` / `size` / **`phGraph_out`**）——注意分支子图是**由驱动回填到 `phGraph_out`** 的，不再由你传 `phGraph` 进去 |
 | `cudaGraphAddChildGraphNode(...)` | 把**一整张子图**当成一个节点嵌进主图（复用图结构） |
 | 设备端 `cudaGraphSetConditional(handle, value)` | kernel 里设置条件值；`!= 0` 继续/走 If，`== 0` 退出/走 Else |
+
+> **⚠ 现状必须说清楚：本示例还没有移植到 CUDA 13 的新 API。** `cudaGraphAddConditionalNode` 和 `cudaGraphConditionalNodeParams` 这两个旧接口在 **CUDA 13 已被移除**，而且 `cudaGraphCondTypeElse` 也不再单独存在（新枚举只有 `cudaGraphCondTypeIf` / `cudaGraphCondTypeWhile` / `cudaGraphCondTypeSwitch`；If 节点把 `size` 设为 `2` 时，`phGraph_out[1]` 就是 else 分支）。替代方案就是上面那行「新写法」（`cudaGraphAddNode` + `cudaGraphNodeParams` + `cudaConditionalNodeParams`）。因为示例代码尚未改写，它用 `#if CUDART_VERSION >= 12030 && CUDART_VERSION < 13000` 把整段条件/循环演示裁掉——**在 CUDA 13 上运行只会打印一句「跳过」说明，不会演示条件节点**。所以下面 2.8 节的代码请当作「CUDA 12.3 ～ 12.x 的写法 + CUDA 13 的跳过分支」来读；想在 CUDA 13 上用条件节点，需要自己按新 API 重写（可参考 `cuda-samples` 里的 graphConditionalNodes 样例）。
 
 **三个必须记住的语义细节**：
 
@@ -442,7 +481,7 @@ attrs[0].val.clusterDim.x = 2; attrs[0].val.clusterDim.y = 1; attrs[0].val.clust
 |---|---|---|
 | 拓扑 | 静态 DAG | DAG + 条件 + 循环（**含环**） |
 | 分支在哪决定 | host（要么重提交，要么同步） | **设备端**（`cudaGraphSetConditional`） |
-| 构图方式 | 主要靠**流捕获** | **显式构图**（`cudaGraphAddKernelNode` / `cudaGraphAddConditionalNode`） |
+| 构图方式 | 主要靠**流捕获** | **显式构图**（`cudaGraphAddKernelNode`；控制流节点在 CUDA 12.3～12.x 用 `cudaGraphAddConditionalNode`，CUDA 13 起改用 `cudaGraphAddNode` + `cudaGraphNodeParams.type = cudaGraphNodeTypeConditional`） |
 | 省下的是什么 | kernel 之间的启动间隙 | 启动间隙 **+ host 往返 + 重提交开销** |
 
 **显式构图的三个坑**：
@@ -459,17 +498,32 @@ attrs[0].val.clusterDim.x = 2; attrs[0].val.clusterDim.y = 1; attrs[0].val.clust
 
 ### 2.1 动态并行：`code/lessons/ch06_advanced/dynparallel/dynparallel.cu`
 
-文件头把两个硬性条件写在最显眼处：
+文件头把**四个**硬性条件写在最显眼处：
 
 ```cpp
 //  ch06_advanced/dynparallel/dynparallel.cu
 //  动态并行（Dynamic Parallelism）：在设备端启动 kernel
 //
-//  ⚠ 两个硬性条件，缺一不可：
-//     1) // 需要 Compute Capability >= 3.5
+//  ⚠ 四个条件，缺一不可：
+//     1) 需要 Compute Capability >= 3.5
 //     2) 必须用 -rdc=true（可重定位设备代码）编译，否则设备端 <<<>>> 链接不上
+//     3) 目标架构必须 **低于 sm_90**：CUDA 13 起，设备端的 cudaDeviceSynchronize()
+//        只在 __CUDA_ARCH__ < 900 时才提供（见 cuda_device_runtime_api.h 里的
+//        #if (__CUDA_ARCH__ < 900) 保护）。在 sm_90 / sm_100 / sm_120 上会报
+//        "calling a __host__ function from a __global__ function is not allowed"。
+//        Hopper / Blackwell 上请改用 CDP2（cudaGridDependencySynchronize 等）。
+//     4) **Windows x64 上还必须定义 CUDA_FORCE_CDP1_IF_SUPPORTED**：
+//        那段声明的完整条件是
+//          #if (__CUDA_ARCH__ < 900) && (defined(CUDA_FORCE_CDP1_IF_SUPPORTED) \
+//                                        || (defined(_WIN32) && !defined(_WIN64)))
+//        Windows x64 同时定义了 _WIN32 和 _WIN64，所以只有显式定义这个宏，
+//        才拿得到设备端的声明。
 //
-//  编译: nvcc -O3 -arch=sm_70 -rdc=true dynparallel.cu -o dynparallel
+//  编译（Windows x64）:
+//    nvcc -O3 -arch=sm_80 -rdc=true -DCUDA_FORCE_CDP1_IF_SUPPORTED dynparallel.cu -o dynparallel
+//    ⚠ 不要用 -arch=native：RTX 40/50 系会解析成 sm_89 / sm_120，其中 sm_120 会编译失败。
+//  编译（Linux）:
+//    nvcc -O3 -arch=sm_80 -rdc=true dynparallel.cu -o dynparallel
 ```
 
 设备端不能复用 `cuda_check.h` 的 `CUDA_CHECK`（它内部会 `fprintf` + `exit`），所以文件自己定义了一个只打印的宏：
@@ -564,6 +618,8 @@ __global__ void recursiveSumKernel(const float* in, float* out, int n) {
 #include "../common/cuda_check.h"
 #include <cuda_fp16.h>
 #include <mma.h>
+// WMMA 的 fragment / load_matrix_sync / store_matrix_sync 都在 nvcuda::wmma 命名空间下
+using namespace nvcuda;
 
 // 一次 WMMA 操作的形状：16 x 16 x 16
 //   注意：这是 **warp 级别** 的形状，不是块级别，更不是线程级别。
@@ -857,12 +913,28 @@ __global__ void saxpy(const float* __restrict__ x, float* __restrict__ y,
 ```cpp
     // ---- 关键的 cudaMemAdvise：告诉驱动"x 只读，优先放 GPU 显存" ----
     // 只读标记让驱动可以在 CPU 和 GPU 两侧各留一份副本，避免来回迁移
+#if CUDART_VERSION >= 13000
+    // CUDA 13 起 cudaMemAdvise 的第 4 个参数由 device id 变成 cudaMemLocation
+    int advDev = 0;
+    CUDA_CHECK(cudaGetDevice(&advDev));
+    cudaMemLocation advLoc{};
+    advLoc.type = cudaMemLocationTypeDevice;
+    advLoc.id   = advDev;
+    CUDA_CHECK(cudaMemAdvise(x, bytes, cudaMemAdviseSetReadMostly,       advLoc));
+    CUDA_CHECK(cudaMemAdvise(x, bytes, cudaMemAdviseSetPreferredLocation, advLoc));
+    // y 会被反复写，标记"只能由 GPU 访问"，驱动就不必考虑 CPU 侧的副本
+    CUDA_CHECK(cudaMemAdvise(y, bytes, cudaMemAdviseSetPreferredLocation, advLoc));
+    CUDA_CHECK(cudaMemAdvise(y, bytes, cudaMemAdviseSetAccessedBy,       advLoc));
+#else
     CUDA_CHECK(cudaMemAdvise(x, bytes, cudaMemAdviseSetReadMostly, 0));
     CUDA_CHECK(cudaMemAdvise(x, bytes, cudaMemAdviseSetPreferredLocation, 0));
     // y 会被反复写，标记"只能由 GPU 访问"，驱动就不必考虑 CPU 侧的副本
     CUDA_CHECK(cudaMemAdvise(y, bytes, cudaMemAdviseSetPreferredLocation, 0));
     CUDA_CHECK(cudaMemAdvise(y, bytes, cudaMemAdviseSetAccessedBy, 0));
+#endif
 ```
+
+> **CUDA 13 的签名变更**：`cudaMemAdvise(ptr, bytes, advice, deviceId)` 变成 `cudaMemAdvise(ptr, bytes, advice, cudaMemLocation)`。原来那种「最后一个参数直接写 `0` 表示设备 0」的写法在 CUDA 13 上编不过——要显式构造 `cudaMemLocation{ cudaMemLocationTypeDevice, deviceId }`。以「撤销建议」的 `cudaMemAdviseUnsetXXX` 为例，用法完全一样，只是位置参数跟着换。
 
 **两个场景的对比**——A 靠页错误，B 先预取：
 
@@ -889,8 +961,18 @@ __global__ void saxpy(const float* __restrict__ x, float* __restrict__ y,
         float best = 1e30f;
         for (int r = 0; r < REPEAT; ++r) {
             // 每次迭代前先把数据"拉回"到设备侧（模拟真实迭代求解器的节奏）
+#if CUDART_VERSION >= 13000
+            // CUDA 13 起 cudaMemPrefetchAsync 的第 3 个参数由 device id 变成 cudaMemLocation，
+            // 并新增了第 4 个 flags 参数
+            cudaMemLocation pLoc{};
+            pLoc.type = cudaMemLocationTypeDevice;
+            pLoc.id   = 0;
+            CUDA_CHECK(cudaMemPrefetchAsync(x, bytes, pLoc, 0, s));
+            CUDA_CHECK(cudaMemPrefetchAsync(y, bytes, pLoc, 0, s));
+#else
             CUDA_CHECK(cudaMemPrefetchAsync(x, bytes, 0, s));
             CUDA_CHECK(cudaMemPrefetchAsync(y, bytes, 0, s));
+#endif
             CUDA_CHECK(cudaStreamSynchronize(s));
             timer.start();
             saxpy<<<grid, TPB>>>(x, y, 2.0f, N);
@@ -1143,7 +1225,15 @@ __global__ void loopBodyKernel(cudaGraphConditionalHandle handle, int* counter,
 
 **条件节点（If / Else）的构造**：
 
+> **⚠ 先看清现状**：下面这段用的是 **CUDA 12.3 ～ 12.x 的接口**（`cudaGraphAddConditionalNode` + `cudaGraphConditionalNodeParams`）。**CUDA 13 已把这一整套 API 整体移除**，新写法是 `cudaGraphAddNode` + `cudaGraphNodeParams.type = cudaGraphNodeTypeConditional` 配合 `cudaConditionalNodeParams`（`phGraph_out` 由驱动回填）。**示例代码尚未移植到新 API**，所以真实文件里整段被 `#if CUDART_VERSION >= 12030 && CUDART_VERSION < 13000` 包住——**在 CUDA 13 上编译时这段不存在，运行时只打印「跳过」说明**。不要把下面的代码当成「CUDA 13 上可以直接抄」的写法。
+
 ```cpp
+#if CUDART_VERSION >= 12030 && CUDART_VERSION < 13000
+        // 注意：本段用的 cudaGraphAddConditionalNode / cudaGraphConditionalNodeParams 是
+        //       CUDA 12.3 ~ 12.x 的接口；CUDA 13 起改成了
+        //       cudaGraphAddNode + cudaConditionalNodeParams（phGraph_out 回填分支子图），
+        //       该接口尚未在本示例中移植，故在 CUDA 13 上跳过。
+
         // ---- 主图：条件求值节点 + If 节点 + Else 节点 ----
         cudaGraph_t graph = nullptr;
         CUDA_CHECK(cudaGraphCreate(&graph, 0));
@@ -1176,6 +1266,7 @@ __global__ void loopBodyKernel(cudaGraphConditionalHandle handle, int* counter,
         cp.phGraph = bodyFalse;
         cudaGraphNode_t nElse = nullptr;
         CUDA_CHECK(cudaGraphAddConditionalNode(&nElse, graph, &nEval, 1, &cp));
+#endif
 ```
 
 **循环节点（While）**——注意初始值给 `1` 表示「先进循环体」：
@@ -1188,6 +1279,7 @@ __global__ void loopBodyKernel(cudaGraphConditionalHandle handle, int* counter,
 ```
 
 ```cpp
+#if CUDART_VERSION >= 12030 && CUDART_VERSION < 13000   // 与 If/Else 同一套 CUDA 12.x 接口，CUDA 13 上整段跳过
         cudaGraphConditionalNodeParams cp = {};
         cp.handle = handle;
         cp.size = 1;
@@ -1196,7 +1288,18 @@ __global__ void loopBodyKernel(cudaGraphConditionalHandle handle, int* counter,
 
         cudaGraphNode_t nWhile = nullptr;
         CUDA_CHECK(cudaGraphAddConditionalNode(&nWhile, graph, nullptr, 0, &cp));
+#endif
 ```
+
+> 真实文件里，**第二部分的 If/Else 和第三部分的 While 共用同一个 `#if CUDART_VERSION >= 12030 && CUDART_VERSION < 13000`**（条件句柄创建、求值 kernel、子图全部在里面）。上面为了把两个知识点分开讲拆成了两段代码块，守卫条件是同一个。`#else` 分支打印的正是下面这两行：
+>
+> ```cpp
+> printf("\n[跳过] 条件节点与循环节点需要 CUDA >= 12.3，当前是 %d.%d。\n",
+>        CUDART_VERSION / 1000, (CUDART_VERSION % 1000) / 10);
+> printf("       升级到 CUDA 12.3+ 后重新编译即可看到完整演示。\n");
+> ```
+>
+> 注意：**CUDA 13 也会走到这个 `#else` 分支**，所以那句「需要 CUDA >= 12.3」在 CUDA 13 机器上看起来有点误导——它的真实含义是「本示例支持的控制流节点只存在于 12.3 ～ 12.x」。
 
 ---
 
@@ -1240,7 +1343,7 @@ out[0] = out[1] + out[2];
 
 **① 为什么 `matrix_b` 用 `col_major`？** 这是最容易绕晕但必须想通的地方。数学上要算 `C = A × B`，其中 B 是 K×N 的**行主序**数组（和 `b + k * N + n` 的寻址一致）。而 WMMA 的 `matrix_b` 片段期望的是「按列主序解释的一块 K×N 矩阵」。`load_matrix_sync` 在 `col_major` 下的语义是：**「我要读的是这块矩阵的转置」**。于是「把行主序的 B 按 col_major 读进来 ≡ 读进了 Bᵀ」，配上 `row_major` 的 A，恰好给出官方样例的标准写法。**实践建议**：不要试图在脑子里模拟硬件布局，**照抄官方样例的 `row_major × col_major` 组合**，然后用 CPU 对拍验证。这也是本示例带完整 CPU 参考实现的原因。
 
-**② `fragment` 声明为什么「不访问内存」？** `fragment` 就是一个**编译期确定大小的寄存器数组**。声明它只是分配寄存器；`fill_fragment` 把它清零。这两步都不碰内存，真正的数据流动只有两个口：`load_matrix_sync`（进）和 `store_matrix_sync`（出）。
+**② `fragment` 声明为什么「不访问内存」？** `fragment` 就是一个**编译期确定大小的寄存器数组**。声明它只是分配寄存器；`fill_fragment` 把它清零。这两步都不碰内存，真正的数据流动只有两个口：`load_matrix_sync`（进）和 `store_matrix_sync`（出）。**顺带记住写法**：`wmma::fragment` 里的 `wmma` 来自 `nvcuda` 命名空间，所以源码里 `#include <mma.h>` 之后必须跟上 `using namespace nvcuda;`（否则写全名 `nvcuda::wmma::fragment`）——这一行漏了会报 `identifier "wmma" is undefined`，看起来很像「架构不够」，其实和显卡没关系。
 
 **③ `ldm` 为什么是 `K` 和 `N`，而不是 `WMMA_K` / `WMMA_N`？** 因为我们要取的是**大矩阵 A（M×K）里的一个 16×16 子块**。子块的第 1 行和第 2 行之间，在内存里隔了 **K 个元素**（整行长度），不是 16 个。`ldm` 描述的是「**在源矩阵里怎么走到下一行/列**」，和子块宽度无关。`store_matrix_sync` 的第四参数是结果的存储布局 `wmma::mem_row_major`，因为累加器 fragment 本身没有布局属性——布局要在这里指定。
 
@@ -1360,8 +1463,15 @@ total += remote[r];
 **④ 场景 A / B 的对比设计为什么有意义，又有什么陷阱？** 注意 B 里**每次迭代都重新预取**，而且计时**不包含预取与同步**：
 
 ```cpp
+// CUDA 12.x：第 3 个参数是设备号；CUDA 13：换成 cudaMemLocation + flags
+#if CUDART_VERSION >= 13000
+cudaMemLocation pLoc{ cudaMemLocationTypeDevice, 0 };
+CUDA_CHECK(cudaMemPrefetchAsync(x, bytes, pLoc, 0, s));
+CUDA_CHECK(cudaMemPrefetchAsync(y, bytes, pLoc, 0, s));
+#else
 CUDA_CHECK(cudaMemPrefetchAsync(x, bytes, 0, s));
 CUDA_CHECK(cudaMemPrefetchAsync(y, bytes, 0, s));
+#endif
 CUDA_CHECK(cudaStreamSynchronize(s));
 timer.start();
 saxpy<<<grid, TPB>>>(x, y, 2.0f, N);
@@ -1443,13 +1553,27 @@ if (blockIdx.x == 0 && threadIdx.x == 0)
 **③ If 和 Else 是两个节点，共享一个 handle**：
 
 ```cpp
+#if CUDART_VERSION >= 12030 && CUDART_VERSION < 13000   // CUDA 12.3 ~ 12.x 的接口
 cp.type = cudaGraphCondTypeIf;      cp.phGraph = bodyTrue;   → nIf
 cp.type = cudaGraphCondTypeElse;    cp.phGraph = bodyFalse;  → nElse
 CUDA_CHECK(cudaGraphAddConditionalNode(&nIf,   graph, &nEval, 1, &cp));
 CUDA_CHECK(cudaGraphAddConditionalNode(&nElse, graph, &nEval, 1, &cp));
+#endif
 ```
 
 **注意示例里两次调用的 `cp` 是同一个结构体，只改了 `type` 和 `phGraph`**。这之所以安全，是因为 `cudaGraphAddConditionalNode` 会**拷贝**参数结构体的内容；但 `phGraph` 指向的 `bodyTrue` / `bodyFalse` 两张子图**必须活到主图被销毁为止**——这就是示例最后要 `cudaGraphDestroy(bodyTrue)` 和 `bodyFalse` 的原因。
+
+> **CUDA 13 上的对应写法长什么样？** 不再有 `phGraph` 这个「把体图传进去」的字段，而是改用 `cudaGraphAddNode` + `cudaGraphNodeParams.type = cudaGraphNodeTypeConditional`，并配合 `cudaConditionalNodeParams`（字段 `handle` / `type` / `size` / `phGraph_out`）——**分支子图由驱动回填到 `phGraph_out`**，你再往那张子图里添加分支节点。伪代码示意：
+>
+> ```text
+> cudaGraphNodeParams np = {};
+> np.type = cudaGraphNodeTypeConditional;
+> np.conditional.handle = handle;  np.conditional.size = 1;  np.conditional.type = cudaGraphCondTypeIf;
+> cudaGraphAddNode(&nIf, graph, &nEval, nullptr, 1, &np);
+> // 之后用 np.conditional.phGraph_out[0] 拿到驱动建好的分支子图，往里加分支节点
+> ```
+>
+> **这只是示意，不是本示例里已有的代码**——示例还没做这次移植，所以 CUDA 13 上跑到的仍然是「跳过」。真要照抄，请以 CUDA 13 头文件里的结构体定义（`cudaGraphNodeParams` / `cudaConditionalNodeParams`）和 `cuda-samples` 的 graphConditionalNodes 样例为准。
 
 **④ 循环节点：`cp.size` 和「谁负责退出」**：`size = 1` 表示条件句柄是**标量**（一个 `unsigned`）而不是数组。**退出循环的责任在循环体 kernel 里**：
 
@@ -1480,13 +1604,16 @@ nvidia-smi topo -m                                     # 多卡机器：看 PCIe
 **本章有 4 个示例需要特殊参数，缺一个都编不过或跑不出效果。**
 
 ```bash
-# ① 动态并行 —— 必须 -rdc=true
+# ① 动态并行 —— 必须 -rdc=true；CUDA 13 上还要避开 sm_90+，Windows x64 要加宏
 cd code/lessons/ch06_advanced/dynparallel
-nvcc -O3 -arch=sm_70 -rdc=true dynparallel.cu -o dynparallel
+# Windows x64 + CUDA 13：
+nvcc -O3 -arch=sm_80 -rdc=true -DCUDA_FORCE_CDP1_IF_SUPPORTED dynparallel.cu -o dynparallel
+# Linux：
+nvcc -O3 -arch=sm_80 -rdc=true dynparallel.cu -o dynparallel
 # 若报 undefined reference to '__cudaRegisterLinkedBinary...'，补 -lcudadevrt：
-nvcc -O3 -arch=sm_70 -rdc=true dynparallel.cu -o dynparallel -lcudadevrt
+nvcc -O3 -arch=sm_80 -rdc=true -DCUDA_FORCE_CDP1_IF_SUPPORTED dynparallel.cu -o dynparallel -lcudadevrt
 
-# ② WMMA —— 必须 >= sm_70（有 Ampere 卡建议 sm_80）
+# ② WMMA —— 必须 >= sm_70（有 Ampere 卡建议 sm_80）；源码里别忘了 using namespace nvcuda;
 cd ../wmma
 nvcc -O3 -arch=sm_70 wmma_gemm.cu -o wmma_gemm
 
@@ -1510,16 +1637,18 @@ nvcc -O3 -arch=sm_70 vmm_alloc.cu -o vmm_alloc -lcuda
 cd ../multigpu
 nvcc -O3 -arch=sm_70 p2p.cu -o p2p
 
-# ⑧ CUDA Graphs 进阶 —— 条件节点需要 Toolkit >= 12.3
+# ⑧ CUDA Graphs 进阶 —— 条件/循环节点需要 12.3 <= Toolkit < 13.0（CUDA 13 上会跳过这段）
 cd ../graphs_advanced
 nvcc -O3 -arch=sm_70 graph_advanced.cu -o graph_advanced
 ```
 
-Windows PowerShell 风格（注意 `.exe` 和反斜杠）：
+> **注意 ① 的命令在 CUDA 13 上和旧文档不同**：`-arch` 从 `sm_70` 换成了 `sm_80`（避开 `sm_90+` 上被移除的设备端 `cudaDeviceSynchronize` 声明），Windows x64 上还必须多一个 `-DCUDA_FORCE_CDP1_IF_SUPPORTED`。这两条都写在 `dynparallel.cu` 的文件头里，**不要用 `-arch=native`**——RTX 40/50 会被探测成 `sm_89` / `sm_120` 而编译失败。
+
+Windows PowerShell 风格（注意 `.exe` 和反斜杠，`-arch` 与宏都按 CUDA 13 的写法）：
 
 ```powershell
 cd code\lessons\ch06_advanced\dynparallel
-nvcc -O3 -arch=sm_70 -rdc=true dynparallel.cu -o dynparallel.exe
+nvcc -O3 -arch=sm_80 -rdc=true -DCUDA_FORCE_CDP1_IF_SUPPORTED dynparallel.cu -o dynparallel.exe
 .\dynparallel.exe
 ```
 
@@ -1535,7 +1664,7 @@ Makefile 里的特殊处理：
 
 ```make
 	case "$*" in \
-	  *dynparallel*)  EXTRA="-rdc=true" ;; \
+	  *dynparallel*)  EXTRA="-rdc=true -arch=sm_80 -DCUDA_FORCE_CDP1_IF_SUPPORTED" ;; \
 	  *cluster_dsm*)  EXTRA="-arch=sm_90" ;; \
 	  *vmm_alloc*)    EXTRA="-lcuda" ;; \
 	  *)              EXTRA="" ;; \
@@ -1740,7 +1869,7 @@ from1    Y   -
 
 ### 4.10 CUDA Graphs 进阶：预期输出
 
-Toolkit ≥ 12.3 时：
+Toolkit 为 12.3 ～ 12.x 时（**只有这一段会打印出条件/循环节点的结果**）：
 
 ```text
 [逐个启动] 200 轮 x 3 个 kernel: 26.481 ms（平均 132.4 us/轮）
@@ -1762,12 +1891,14 @@ Toolkit ≥ 12.3 时：
            整个循环只提交了 1 次图，host 一次都没参与。
 ```
 
-Toolkit < 12.3 时，条件/循环那两段会被**编译期裁掉**：
+Toolkit < 12.3 **或 ≥ 13.0**（CUDA 13 移除了这套 API，示例尚未移植）时，条件/循环那两段会被**编译期裁掉**——`[逐个启动]` 与 `[Graph]` 两部分照常打印，之后直接进入「什么时候值得用 Graph」：
 
 ```text
 [跳过] 条件节点与循环节点需要 CUDA >= 12.3，当前是 12.0。
        升级到 CUDA 12.3+ 后重新编译即可看到完整演示。
 ```
+
+> **CUDA 13 上你看到的也是上面这两行**（版本号会打印成 `13.0`）。这不是「版本不够」，而是**这套条件/循环 API 在 CUDA 13 被移除了、示例还没改用新 API**——想看到 If/Else 和 While 的真实输出，目前只能换回 CUDA 12.3 ～ 12.x 的工具链，或自己把示例移植到 `cudaGraphAddNode` + `cudaConditionalNodeParams`。
 
 > **关于 `1.40x` 这个数字**：Graph 省的是**每轮的启动开销和 kernel 间隙**，不是计算时间。所以：**kernel 越短收益越大**（这里的 kernel 只处理 1M 个 float，约 40 微秒）；**数据量越大收益越小**；**图的实例化开销**（几十微秒～毫秒）在 200 轮里被摊薄了——如果只执行 1 次，Graph 反而更慢。
 >
@@ -1885,6 +2016,7 @@ __global__ void gemmCpAsyncN(...) {
 |---|---|---|
 | `calling a __global__ function from a __global__ function is only allowed ... with relocatable device code` | 设备端启动了 kernel，但没加 `-rdc=true` | 加 `-rdc=true` 重新编译 |
 | `undefined reference to '__cudaRegisterLinkedBinary_...'` | 用了 `-rdc=true` 但没链接设备运行时库 | 补 `-lcudadevrt`；避免混用不同版本的工具链 |
+| `calling a __host__ function from a __global__ function is not allowed`（调用设备端 `cudaDeviceSynchronize`） | CUDA 13 起该设备端声明只在 `__CUDA_ARCH__ < 900` **且**（非 Windows x64，或定义了 `CUDA_FORCE_CDP1_IF_SUPPORTED`）时提供；用了 `sm_90+`（含 `-arch=native` 探测出的 `sm_120`）或 Windows x64 漏了宏 | 改用 `-arch=sm_80`（低于 `sm_90`）；Windows x64 再加 `-DCUDA_FORCE_CDP1_IF_SUPPORTED`；Hopper / Blackwell 上改用 CDP2（`cudaGridDependencySynchronize`） |
 | 设备端 kernel **静默不执行**，结果全错 | 待启动队列满了（`cudaLimitDevRuntimePendingLaunchCount` 默认很小） | 减少设备端启动次数（加大 `LEAF_SIZE`）；或 `cudaDeviceSetLimit(cudaLimitDevRuntimePendingLaunchCount, n)` |
 | 递归 kernel 卡死 / `cudaDeviceSynchronize` 不返回 | 递归没有终止条件，或子 kernel 互相等待 | 检查递归边界；设备端同步只在「本线程发起」的范围内，不能当块间屏障 |
 | 设备端 `cudaMalloc` 返回 `cudaErrorMemoryAllocation` | 设备运行时堆配额用尽（默认约 8 MB） | 改成 host 端预分配；或 `cudaDeviceSetLimit(cudaLimitMallocHeapSize, bytes)` |
@@ -1910,7 +2042,7 @@ __global__ void gemmCpAsyncN(...) {
 | `cudaDeviceEnablePeerAccess` 返回 `cudaErrorPeerAccessAlreadyEnabled` | 同一对设备重复开启 | 该错误码可直接忽略，或用 flag 记录已开启状态 |
 | `cudaDeviceCanAccessPeer` 返回 0（不是报错） | 主板/PCIe 拓扑不支持，或不是 64 位进程，或没有 UVA | `nvidia-smi topo -m` 看拓扑；退回主机中转路径；**不要把它当错误处理** |
 | 跨进程传指针导致崩溃 | 跨进程不能共享指针 | 用 CUDA IPC：`cudaIpcGetMemHandle` / `cudaIpcOpenMemHandle` |
-| `cudaGraphAddConditionalNode` 未定义 | Toolkit < 12.3 | 用 `#if CUDART_VERSION >= 12030` 做编译期保护 |
+| `cudaGraphAddConditionalNode` / `cudaGraphConditionalNodeParams` 未定义 | ① Toolkit < 12.3；② **CUDA 13 已整体移除这套旧接口**（照抄老代码就会编不过） | 12.1/12.2：用 `#if CUDART_VERSION >= 12030` 裁掉；**CUDA 13：改用 `cudaGraphAddNode` + `cudaGraphNodeParams.type = cudaGraphNodeTypeConditional` 配合 `cudaConditionalNodeParams`**（`phGraph_out` 回填分支子图）；本示例尚未移植，故用 `#if CUDART_VERSION >= 12030 && CUDART_VERSION < 13000` 在 CUDA 13 上打印「跳过」 |
 | 条件/循环节点实例化失败 | 设备或驱动不支持（返回 `cudaErrorNotSupported`） | 检查每次 Graph API 的返回值；不支持就退回「多 kernel + host 分支」 |
 | 用循环节点时 GPU **一直忙，host 卡死不返回** | 循环体 kernel 永远不把条件设成 0 | 在循环体里加硬上限（计数器 + `limit`）；先用小 `limit` 调试 |
 | 显式构图的 kernel 参数变成垃圾值 | `kernelParams` 指向的局部变量在实例化前就出了作用域 | 用具名局部变量（不要用临时表达式），保证它们活到 `cudaGraphInstantiate*` 返回 |
@@ -1938,7 +2070,7 @@ __global__ void gemmCpAsyncN(...) {
 10. **统一内存的默认行为是「谁碰它搬到谁那」**，代价是页错误（几十微秒级）。`cudaMemAdvise` 是「告诉驱动使用习惯」，`cudaMemPrefetchAsync` 是「提前叫搬家公司」——两者都只是**优化提示**，不改变正确性；迭代型算法的数据本来就常驻 GPU，最省事的做法是**别用托管内存**。
 11. **VMM 把「虚拟地址」和「物理分配」解耦**，四步是 `cuMemAddressReserve → cuMemCreate → cuMemMap → cuMemSetAccess`，释放必须**反序**。大模型框架用它做显存池、碎片拼接、别名映射和跨进程共享。
 12. **P2P 的前提是拓扑**：`cudaDeviceCanAccessPeer` 返回 0 **不是错误**。开启后 kernel 可以直接解引用对端指针，但**大规模搬运仍应用 `cudaMemcpyPeer`**。集合通信不要自己写——用 NCCL。
-13. **CUDA Graph 的条件/循环节点（Toolkit ≥ 12.3）把分支判断搬到了设备端**：`cudaGraphSetConditional` 写条件值，If/Else/While 节点按值执行。**循环体必须自己负责把条件设成 0，并且要有硬上限。**
+13. **CUDA Graph 的条件/循环节点（Toolkit ≥ 12.3 引入）把分支判断搬到了设备端**：`cudaGraphSetConditional` 写条件值，If/Else/While 节点按值执行。**循环体必须自己负责把条件设成 0，并且要有硬上限。** 注意 **CUDA 13 移除了 `cudaGraphAddConditionalNode` 那套旧接口**（改用 `cudaGraphAddNode` + `cudaConditionalNodeParams`），本章示例尚未移植，**在 CUDA 13 上这一段只会打印「跳过」**。
 14. **能力检测 + 优雅降级是本章的第一公民技能**：`cudaGetDeviceProperties` / `cudaDeviceGetAttribute` / `cuDeviceGetAttribute`，不支持就打印一句人话然后 `return 0`。
 
 ### 7.2 自检问题（附答案要点）
