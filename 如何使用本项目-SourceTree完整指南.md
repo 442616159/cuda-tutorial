@@ -281,7 +281,7 @@ cuda-tutorial/
 
 ## 九、拿到代码之后怎么跑起来
 
-> 前提：一台 **NVIDIA 显卡**的机器 + 装好 **CUDA Toolkit**。环境搭建的完整步骤见 [`docs/ch00_环境搭建与第一个程序.md`](ch00_环境搭建与第一个程序.md)。
+> 前提：一台 **NVIDIA 显卡**的机器 + 装好 **CUDA Toolkit**。环境搭建的完整步骤见 [`docs/ch00_环境搭建与第一个程序.md`](docs/ch00_环境搭建与第一个程序.md)。
 
 **先跑环境自检脚本**，确认工具链齐了：
 
@@ -395,7 +395,7 @@ git log --oneline --graph -20
 | **加为协作者**（仓库主人操作） | 仓库主人到 `Settings → Collaborators` 邀请你的账号，接受后你就能直接推送 |
 | **Fork + Pull Request**（推荐，适合外部贡献） | ① 在 GitHub 页面点 **Fork**；② 克隆**你自己 fork 出来的**仓库；③ 改完推送到你的 fork；④ 在 GitHub 上发起 **Pull Request** 给原仓库 |
 
-详情参考仓库里的 [`CONTRIBUTING.md`](../CONTRIBUTING.md)。
+详情参考仓库里的 [`CONTRIBUTING.md`](CONTRIBUTING.md)。
 
 ---
 
@@ -416,4 +416,4 @@ git log --oneline --graph -20
 - Git for Windows：<https://git-scm.com/download/win>
 - SourceTree 官方下载：<https://www.sourcetreeapp.com/>
 - GitHub SSH 密钥设置：<https://docs.github.com/cn/authentication/connecting-to-github-with-ssh>
-- 本项目贡献指南：[CONTRIBUTING.md](../CONTRIBUTING.md)
+- 本项目贡献指南：[CONTRIBUTING.md](CONTRIBUTING.md)
