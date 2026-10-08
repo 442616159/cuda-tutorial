@@ -269,17 +269,72 @@ powershell -ExecutionPolicy Bypass -File tools/verify_all.ps1
 
 ## 环境要求
 
+### 一、软硬件清单
+
 | 项目 | 最低要求 | 推荐 |
 |---|---|---|
-| NVIDIA 显卡 | Compute Capability ≥ 3.5 | ≥ 7.0（Turing 及以后） |
-| 显卡驱动 | 支持对应 CUDA 版本 | 最新版 |
-| CUDA Toolkit | 11.0 | 12.x |
-| 主机编译器 | Linux: g++ 7+ / Windows: MSVC 2019+ | 最新版 |
+| NVIDIA 显卡 | Compute Capability ≥ 3.5 | ≥ 8.0（Ampere 及以后） |
+| 显卡驱动 | 满足所装 CUDA Toolkit 的最低版本要求 | 最新版 |
+| CUDA Toolkit | 11.0（老卡）／12.8+（RTX 50 系） | 12.6 或 13.x，见下一节 |
+| 主机编译器 | Linux: g++ 7+　／　Windows: MSVC 2019+ | VS 2022（CUDA 13 建议） |
 | 操作系统 | Windows 10 / Ubuntu 20.04 | Windows 11 / Ubuntu 22.04 |
 | 内存 | 8 GB | 16 GB+ |
 
-> 部分章节（第 6 章）需要较高 Compute Capability，教程中会明确标注。
-> 没有独立显卡也可以学习前 5 章的全部内容（性能数据会不同，但概念和代码完全一致）。
+> **编译不需要显卡，运行才需要。** nvcc 完全在 CPU 上工作，所以没有 N 卡也能装 Toolkit、把代码编出来（只是跑不起来）。
+
+### 二、CUDA 版本怎么选：看显卡，不是看喜好
+
+同一份源码可以在多个 CUDA 版本上编译（源码里对 API 变更做了 `#if CUDART_VERSION` 版本兼容），但**版本常常是被显卡"逼"出来的**：
+
+| 你的显卡 | 可用的 CUDA 版本 | 说明 |
+|---|---|---|
+| Maxwell / Pascal（GTX 9/10 系，sm_50~61） | **≤ 12.x** | CUDA 13 已不支持（13.0 最低只到 `compute_75`） |
+| Volta（Titan V，sm_70） | **≤ 12.x** | 同上 |
+| Turing（RTX 20 系，sm_75） | 10 以上都行 | 12.x / 13.x 都可以 |
+| Ampere（RTX 30 系，sm_80/86） | 11 以上 | 12.x / 13.x 都可以 |
+| Ada（RTX 40 系，sm_89） | 11.8 以上 | 12.x / 13.x 都可以 |
+| Hopper（H100，sm_90） | 11.8 以上 | 12.x / 13.x 都可以 |
+| **Blackwell（RTX 50 系，sm_100/120）** | **12.8 以上** | CUDA 11 完全不认这代卡 |
+
+> **实测环境**：CUDA 13.0 + RTX 5060（CC 12.0）+ VS 2022 + Windows 11，
+> `code/` 下 66 个示例**全部编译通过**（1 个需要 PyTorch 的除外）。
+> CUDA 12.x 及更早版本走的是源码里的兼容分支，逻辑上等价于原实现，但**未在实机上逐一验证**。
+
+### 三、各示例的硬件门槛
+
+绝大多数示例对显卡没有特殊要求，只有第 6 章和 sgemm 的一个版本例外：
+
+| 示例 | 最低 Compute Capability | 原因 |
+|---|---|---|
+| 其余全部示例 | ≥ 3.5（任何在役 N 卡均可） | — |
+| `ch06_advanced/wmma/wmma_gemm.cu` | **≥ 7.0** | Tensor Core 从 Volta 起才有 |
+| `ch06_advanced/cpasync/cpasync_gemm.cu` | **≥ 8.0** | `cp.async` 是 Ampere 引入的 |
+| `projects/sgemm/v6_double_buffer.cu` | **≥ 8.0** | 同上 |
+| `ch06_advanced/cluster/cluster_dsm.cu` | **≥ 9.0（Hopper）** | 线程块集群只有 H100 那代支持 |
+| `ch06_advanced/dynparallel/dynparallel.cu` | **< 9.0**（反向限制） | CUDA 13 起设备端同步在 sm_90+ 被移除；Windows x64 还需 `-DCUDA_FORCE_CDP1_IF_SUPPORTED` |
+| `ch06_advanced/multigpu/p2p.cu` | 需要**两张**显卡 | 编译不需要，运行需要 |
+| `ch07_python/*` | Python + torch / cupy / numba / triton | 与 CUDA 版本无关，是缺包问题 |
+
+### 四、换一台电脑时的检查清单
+
+```bash
+nvidia-smi               # ① 显卡型号 + 驱动版本 + 计算能力(CC)
+nvcc --version           # ② Toolkit 版本
+nvcc --list-gpu-arch     # ③ 这个 Toolkit 支持哪些架构
+```
+
+拿到 CC 之后，编译任意示例（**不需要任何额外参数**）：
+
+```bash
+nvcc -O3 -std=c++17 -arch=sm_XX 文件名.cu -o 文件名
+```
+
+`sm_XX` 就填第 ① 步看到的 CC：`8.6` → `-arch=sm_86`，`12.0` → `-arch=sm_120`。
+
+**两个容易踩的坑：**
+
+1. `-arch=native` 很方便，**但 `dynparallel.cu` 不能用**——RTX 40/50 系会被探测成 sm_89 / sm_120，而该示例要求 CC < 9.0，必须手写 `-arch=sm_80`。
+2. **新增源文件请保存为「UTF-8 with BOM」**：当本机 ANSI 代码页是 GBK 时，没有 BOM 的中文源码会被编译器错解，产生一大堆 `expected a declaration`、`missing closing quote` 之类的**假语法错误**。详细说明见 `tools/verify_all.ps1` 顶部注释。
 
 ---
 
