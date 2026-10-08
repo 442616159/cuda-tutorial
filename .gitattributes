@@ -1,0 +1,41 @@
+# ============================================================
+#  换行符策略
+#  仓库内部统一存 LF；检出时按平台习惯。
+#  关键点：*.sh 必须永远是 LF，否则拿到 Linux/WSL/服务器上
+#  会因为 CRLF 报 "bad interpreter: No such file or directory"。
+# ============================================================
+
+* text=auto
+
+# ---------- 源码 ----------
+*.cu    text
+*.cuh   text
+*.cpp   text
+*.cc    text
+*.h     text
+*.hpp   text
+*.py    text
+*.md    text
+*.txt   text
+*.cmake text
+CMakeLists.txt text
+Makefile text
+
+# ---------- Shell 脚本：强制 LF ----------
+*.sh    text eol=lf
+
+# ---------- PowerShell 脚本：Windows 习惯用 CRLF ----------
+*.ps1   text eol=crlf
+
+# ---------- 二进制文件：禁止换行转换 ----------
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.pdf   binary
+*.zip   binary
+*.gz    binary
+*.7z    binary
+*.ncu-rep binary
+*.nsys-rep binary

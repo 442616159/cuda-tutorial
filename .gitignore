@@ -1,0 +1,88 @@
+# ============================================================
+#  CUDA 教程项目 .gitignore
+#  原则：只提交「源码 + 文档 + 构建脚本」，绝不提交编译产物
+# ============================================================
+
+# ---------- 构建目录 ----------
+build/
+build-*/
+out/
+bin/
+lib/
+cmake-build-*/
+
+# ---------- C/C++ 编译产物 ----------
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.so.*
+*.a
+*.lib
+*.pdb
+*.ilk
+*.exp
+*.idb
+*.d
+*.gch
+*.pch
+
+# ---------- CMake 中间文件 ----------
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+DartConfiguration.tcl
+compile_commands.json
+Testing/
+install_manifest.txt
+
+# ---------- CUDA 中间/产物文件 ----------
+*.cubin
+*.fatbin
+*.ptx
+*.sass
+
+# ---------- Profiling 报告（体积大且是本地环境相关） ----------
+*.ncu-rep
+*.nsys-rep
+*.qdrep
+*.sqlite
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# ---------- IDE / 编辑器 ----------
+.vs/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.swp
+*.swo
+*~
+
+# ---------- 操作系统 ----------
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# ---------- 合并/备份临时文件 ----------
+*.orig
+*.rej
+*.bak
+*.tmp
