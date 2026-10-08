@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 //  code/lessons/ch06_advanced/unified/unified_advise.cu
 //
 //  统一内存进阶：cudaMemAdvise 与按需页迁移
@@ -93,11 +93,25 @@ int main() {
 
     // ---- 关键的 cudaMemAdvise：告诉驱动"x 只读，优先放 GPU 显存" ----
     // 只读标记让驱动可以在 CPU 和 GPU 两侧各留一份副本，避免来回迁移
+#if CUDART_VERSION >= 13000
+    // CUDA 13 起 cudaMemAdvise 的第 4 个参数由 device id 变成 cudaMemLocation
+    int advDev = 0;
+    CUDA_CHECK(cudaGetDevice(&advDev));
+    cudaMemLocation advLoc{};
+    advLoc.type = cudaMemLocationTypeDevice;
+    advLoc.id   = advDev;
+    CUDA_CHECK(cudaMemAdvise(x, bytes, cudaMemAdviseSetReadMostly,       advLoc));
+    CUDA_CHECK(cudaMemAdvise(x, bytes, cudaMemAdviseSetPreferredLocation, advLoc));
+    // y 会被反复写，标记"只能由 GPU 访问"，驱动就不必考虑 CPU 侧的副本
+    CUDA_CHECK(cudaMemAdvise(y, bytes, cudaMemAdviseSetPreferredLocation, advLoc));
+    CUDA_CHECK(cudaMemAdvise(y, bytes, cudaMemAdviseSetAccessedBy,       advLoc));
+#else
     CUDA_CHECK(cudaMemAdvise(x, bytes, cudaMemAdviseSetReadMostly, 0));
     CUDA_CHECK(cudaMemAdvise(x, bytes, cudaMemAdviseSetPreferredLocation, 0));
     // y 会被反复写，标记"只能由 GPU 访问"，驱动就不必考虑 CPU 侧的副本
     CUDA_CHECK(cudaMemAdvise(y, bytes, cudaMemAdviseSetPreferredLocation, 0));
     CUDA_CHECK(cudaMemAdvise(y, bytes, cudaMemAdviseSetAccessedBy, 0));
+#endif
 
     // CPU 侧初始化（这一步会让页变成"主机常驻"）
     for (int i = 0; i < N; ++i) {
@@ -134,8 +148,18 @@ int main() {
         float best = 1e30f;
         for (int r = 0; r < REPEAT; ++r) {
             // 每次迭代前先把数据"拉回"到设备侧（模拟真实迭代求解器的节奏）
+#if CUDART_VERSION >= 13000
+            // CUDA 13 起 cudaMemPrefetchAsync 的第 3 个参数由 device id 变成 cudaMemLocation，
+            // 并新增了第 4 个 flags 参数
+            cudaMemLocation pLoc{};
+            pLoc.type = cudaMemLocationTypeDevice;
+            pLoc.id   = 0;
+            CUDA_CHECK(cudaMemPrefetchAsync(x, bytes, pLoc, 0, s));
+            CUDA_CHECK(cudaMemPrefetchAsync(y, bytes, pLoc, 0, s));
+#else
             CUDA_CHECK(cudaMemPrefetchAsync(x, bytes, 0, s));
             CUDA_CHECK(cudaMemPrefetchAsync(y, bytes, 0, s));
+#endif
             CUDA_CHECK(cudaStreamSynchronize(s));
             timer.start();
             saxpy<<<grid, TPB>>>(x, y, 2.0f, N);
@@ -150,8 +174,17 @@ int main() {
     // ---- 校验结果 ----
     {
         // 先搬回 CPU 再读，避免在 CPU 上访问 GPU 常驻页造成额外页错误
+#if CUDART_VERSION >= 13000
+        // CUDA 13：目标位置改用 cudaMemLocation，搬到 CPU 用 cudaMemLocationTypeHost
+        cudaMemLocation hostLoc{};
+        hostLoc.type = cudaMemLocationTypeHost;
+        hostLoc.id   = 0;
+        CUDA_CHECK(cudaMemPrefetchAsync(x, bytes, hostLoc, 0, 0));
+        CUDA_CHECK(cudaMemPrefetchAsync(y, bytes, hostLoc, 0, 0));
+#else
         CUDA_CHECK(cudaMemPrefetchAsync(x, bytes, cudaCpuDeviceId, 0));
         CUDA_CHECK(cudaMemPrefetchAsync(y, bytes, cudaCpuDeviceId, 0));
+#endif
         CUDA_CHECK(cudaDeviceSynchronize());
         int bad = 0;
         for (int i = 0; i < N; ++i) {

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 // ============================================================
 //  sgemm_common.h —— 第 8 章 SGEMM 项目公共基础设施
 //
@@ -189,9 +189,13 @@ inline void printBandwidthReference() {
     cudaDeviceProp prop{};
     CUDA_CHECK(cudaGetDeviceProperties(&prop, dev));
     const int cc = prop.major * 10 + prop.minor;
-    // 显存位宽 x 等效频率得到理论带宽；老设备拿不到这些字段就跳过
-    if (prop.memoryClockRate > 0 && prop.memoryBusWidth > 0) {
-        const double bw = 2.0 * prop.memoryClockRate * 1e3 * (prop.memoryBusWidth / 8.0) / 1e9;
+    // 显存位宽 x 等效频率得到理论带宽；老设备拿不到这些字段就跳过。
+    // 注意：CUDA 13 起 cudaDeviceProp 不再提供 memoryClockRate，
+    //      改用 cudaDeviceGetAttribute 查询（该属性自 CUDA 11 起一直存在）。
+    int memClockKHz = 0;
+    CUDA_CHECK(cudaDeviceGetAttribute(&memClockKHz, cudaDevAttrMemoryClockRate, dev));
+    if (memClockKHz > 0 && prop.memoryBusWidth > 0) {
+        const double bw = 2.0 * memClockKHz * 1e3 * (prop.memoryBusWidth / 8.0) / 1e9;
         printf("设备: %s (CC %d.%d)\n", prop.name, prop.major, prop.minor);
         printf("理论显存带宽 ≈ %.1f GB/s（实测通常能到 70%%~85%%）\n", bw);
     } else {

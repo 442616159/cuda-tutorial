@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 //  code/lessons/ch04_timing/bandwidth/bandwidth_test.cu
 //  第 4 章示例 1：把「有效带宽」真正测出来
 //
@@ -96,8 +96,14 @@ int main() {
     int dev = 0;
     CUDA_CHECK(cudaGetDevice(&dev));
     int memClockKHz = 0, busWidth = 0;
+    // CUDA 13 起 cudaDevAttrMemoryBusWidth 改名为 cudaDevAttrGlobalMemoryBusWidth
+#if CUDART_VERSION >= 13000
+    const cudaDeviceAttr kBusWidthAttr = cudaDevAttrGlobalMemoryBusWidth;
+#else
+    const cudaDeviceAttr kBusWidthAttr = cudaDevAttrMemoryBusWidth;
+#endif
     CUDA_CHECK(cudaDeviceGetAttribute(&memClockKHz, cudaDevAttrMemoryClockRate, dev));
-    CUDA_CHECK(cudaDeviceGetAttribute(&busWidth,    cudaDevAttrMemoryBusWidth, dev));
+    CUDA_CHECK(cudaDeviceGetAttribute(&busWidth,    kBusWidthAttr, dev));
     double peak = theoreticalPeakGBs(memClockKHz, busWidth);
 
     printf("\n设备：%s\n", prop.name);

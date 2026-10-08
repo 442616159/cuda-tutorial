@@ -12,6 +12,13 @@
 #        对需要特殊参数的示例（动态并行 / 集群 / VMM）会自动追加。
 #
 #  说明：个别示例依赖 cuDNN，未安装时会失败，这属于环境缺失而非代码错误。
+#
+#  重要（Windows 中文环境必读）：
+#    本仓库源码是 UTF-8 且含中文注释与字符串，**每个源文件都带 UTF-8 BOM**。
+#    若去掉 BOM，在 ANSI 代码页为 936(GBK) 的 Windows 上，MSVC / nvcc 前端会把
+#    中文字节错解成"续行符"并吃掉换行，产生大量 "expected a declaration"、
+#    "missing closing quote"、"unrecognized token" 之类的**假错误**（与代码无关）。
+#    新增源文件时请保存为「UTF-8 with BOM」。
 # ============================================================
 
 $ErrorActionPreference = 'Continue'
@@ -69,13 +76,20 @@ foreach ($s in $srcs) {
     if ($text -match 'curand') { $extra += '-lcurand' }
     if ($text -match 'cusparse') { $extra += '-lcusparse' }
 
-    # 需要特殊处理的三类
+    # 需要特殊处理的几类
     $thisArch = $arch
-    if ($s.FullName -match 'dynparallel') { $extra += '-rdc=true' }
+    # 动态并行：CUDA 13 起设备端 cudaDeviceSynchronize 只在 __CUDA_ARCH__ < 900 且
+    # （非 Windows x64 或显式定义 CUDA_FORCE_CDP1_IF_SUPPORTED）时才提供，
+    # 所以这个示例必须按 sm_80 编译并加上该宏定义。
+    if ($s.FullName -match 'dynparallel') {
+        $extra += '-rdc=true'
+        $extra += '-DCUDA_FORCE_CDP1_IF_SUPPORTED'
+        $thisArch = '-arch=sm_80'
+    }
     if ($s.FullName -match 'cluster_dsm') { $thisArch = '-arch=sm_90' }  # 集群需要 Hopper
     if ($s.FullName -match 'vmm_alloc')   { $extra += '-lcuda' }
 
-    $nvArgs = @('-O3', '-std=c++17', '-lineinfo', $thisArch) + $extra +
+    $nvArgs = @('-O3', '-std=c++17', '-lineinfo', '--extended-lambda', $thisArch) + $extra +
               @($s.FullName, '-o', $exe)
     $log = & nvcc @nvArgs 2>&1
 

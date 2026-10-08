@@ -1,13 +1,28 @@
-// ============================================================================
+﻿// ============================================================================
 //  code/lessons/ch06_advanced/dynparallel/dynparallel.cu
 //
 //  动态并行（Dynamic Parallelism）：在设备端启动 kernel
 //
-//  ⚠ 两个硬性条件，缺一不可：
-//     1) // 需要 Compute Capability >= 3.5
+//  ⚠ 四个条件，缺一不可：
+//     1) 需要 Compute Capability >= 3.5
 //     2) 必须用 -rdc=true（可重定位设备代码）编译，否则设备端 <<<>>> 链接不上
+//     3) 目标架构必须 **低于 sm_90**：CUDA 13 起，设备端的 cudaDeviceSynchronize()
+//        只在 __CUDA_ARCH__ < 900 时才提供（见 cuda_device_runtime_api.h 里的
+//        #if (__CUDA_ARCH__ < 900) 保护）。在 sm_90 / sm_100 / sm_120 上会报
+//        "calling a __host__ function from a __global__ function is not allowed"。
+//        Hopper / Blackwell 上请改用 CDP2（cudaGridDependencySynchronize 等）。
+//     4) **Windows x64 上还必须定义 CUDA_FORCE_CDP1_IF_SUPPORTED**：
+//        那段声明的完整条件是
+//          #if (__CUDA_ARCH__ < 900) && (defined(CUDA_FORCE_CDP1_IF_SUPPORTED) \
+//                                        || (defined(_WIN32) && !defined(_WIN64)))
+//        Windows x64 同时定义了 _WIN32 和 _WIN64，所以只有显式定义这个宏，
+//        才拿得到设备端的声明。
 //
-//  编译: nvcc -O3 -arch=sm_70 -rdc=true dynparallel.cu -o dynparallel
+//  编译（Windows x64）:
+//    nvcc -O3 -arch=sm_80 -rdc=true -DCUDA_FORCE_CDP1_IF_SUPPORTED dynparallel.cu -o dynparallel
+//    ⚠ 不要用 -arch=native：RTX 40/50 系会解析成 sm_89 / sm_120，其中 sm_120 会编译失败。
+//  编译（Linux）:
+//    nvcc -O3 -arch=sm_80 -rdc=true dynparallel.cu -o dynparallel
 //  运行: ./dynparallel
 //
 //  本文件演示三件事：

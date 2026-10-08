@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 //  code/lessons/ch00_hello/device_query.cu
 //  查询本机所有 CUDA 设备的详细信息。
 //
@@ -62,8 +62,13 @@ int main() {
 
         printf("  全局显存大小          : %.2f GB\n",
                prop.totalGlobalMem / 1024.0 / 1024.0 / 1024.0);
+        // CUDA 13 起 cudaDeviceProp 移除了 memoryClockRate / deviceOverlap 等字段，
+        // 统一改用 cudaDeviceGetAttribute 查询，跨版本更稳。
+        int memClockKHz = 0, asyncEngines = 0;
+        CUDA_CHECK(cudaDeviceGetAttribute(&memClockKHz, cudaDevAttrMemoryClockRate, i));
+        CUDA_CHECK(cudaDeviceGetAttribute(&asyncEngines, cudaDevAttrAsyncEngineCount, i));
         printf("  显存总线宽度          : %d bit\n", prop.memoryBusWidth);
-        printf("  显存频率              : %.0f MHz\n", prop.memoryClockRate / 1000.0);
+        printf("  显存频率              : %.0f MHz\n", memClockKHz / 1000.0);
 
         printf("  Warp 大小             : %d   <-- 永远是 32，调度单位\n", prop.warpSize);
         printf("  每块最大线程数        : %d   <-- blockDim.x*y*z 的上限\n",
@@ -83,7 +88,7 @@ int main() {
         printf("  是否支持统一内存      : %s\n",
                prop.unifiedAddressing ? "是" : "否");
         printf("  是否支持并发拷贝      : %s\n",
-               prop.deviceOverlap ? "是" : "否");
+               asyncEngines > 0 ? "是" : "否");
         printf("================================================\n\n");
     }
 

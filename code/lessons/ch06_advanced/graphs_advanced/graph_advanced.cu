@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 //  code/lessons/ch06_advanced/graphs_advanced/graph_advanced.cu
 //
 //  CUDA Graphs 进阶：显式构图、条件节点（if/else）、循环节点（while）
@@ -191,7 +191,11 @@ int main() {
     // =====================================================================
     // 第二部分：条件节点（If / Else）—— 让设备端决定走哪条分支
     // =====================================================================
-#if CUDART_VERSION >= 12030
+#if CUDART_VERSION >= 12030 && CUDART_VERSION < 13000
+    // 注意：本段用的 cudaGraphAddConditionalNode / cudaGraphConditionalNodeParams 是
+    //       CUDA 12.3 ~ 12.x 的接口；CUDA 13 起改成了
+    //       cudaGraphAddNode + cudaConditionalNodeParams（phGraph_out 回填分支子图），
+    //       该接口尚未在本示例中移植，故在 CUDA 13 上跳过。
     {
         printf("\n[条件节点] CUDA %d.%d >= 12.3，开始演示 If/Else 控制流\n",
                CUDART_VERSION / 1000, (CUDART_VERSION % 1000) / 10);

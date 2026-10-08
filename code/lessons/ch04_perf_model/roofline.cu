@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 //  code/lessons/ch04_perf_model/roofline.cu
 //  第 4 章示例 3：Roofline（屋顶线）模型
 //
@@ -49,8 +49,14 @@ int main() {
     // 用 cudaDeviceGetAttribute 而不是 cudaDeviceProp 的字段：
     // 后者的时钟相关成员在不同 CUDA 版本里被移除过，属性接口更稳定。
     int memClockKHz = 0, busWidth = 0, coreClockKHz = 0;
+    // CUDA 13 起 cudaDevAttrMemoryBusWidth 改名为 cudaDevAttrGlobalMemoryBusWidth
+#if CUDART_VERSION >= 13000
+    const cudaDeviceAttr kBusWidthAttr = cudaDevAttrGlobalMemoryBusWidth;
+#else
+    const cudaDeviceAttr kBusWidthAttr = cudaDevAttrMemoryBusWidth;
+#endif
     CUDA_CHECK(cudaDeviceGetAttribute(&memClockKHz, cudaDevAttrMemoryClockRate, dev));
-    CUDA_CHECK(cudaDeviceGetAttribute(&busWidth,    cudaDevAttrMemoryBusWidth, dev));
+    CUDA_CHECK(cudaDeviceGetAttribute(&busWidth,    kBusWidthAttr, dev));
     CUDA_CHECK(cudaDeviceGetAttribute(&coreClockKHz, cudaDevAttrClockRate, dev));
 
     // ---------- 两个天花板 ----------

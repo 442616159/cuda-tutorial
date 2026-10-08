@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 //  thrust_basics.cu —— Thrust：像写 STL 一样写 GPU 代码
 //
 //  本程序把同一件事做两遍：
@@ -7,8 +7,9 @@
 //  然后对比两者的耗时和代码量，让你建立"什么时候用库"的直觉。
 //
 //  编译：
-//    nvcc -O3 -arch=native thrust_basics.cu -o thrust_basics
-//  （Thrust 是 header-only，不需要额外 -l 参数）
+//    nvcc -O3 -arch=native --extended-lambda thrust_basics.cu -o thrust_basics
+//  （Thrust 是 header-only，不需要额外 -l 参数。
+//    下面用到了带 __device__ 标注的 lambda，nvcc 要求显式加 --extended-lambda）
 // ============================================================
 
 #include <cstdio>

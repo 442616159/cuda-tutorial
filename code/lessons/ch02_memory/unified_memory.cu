@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 //  code/lessons/ch02_memory/unified_memory.cu
 //  统一内存（Unified Memory）演示：cudaMallocManaged
 //
@@ -146,7 +146,15 @@ int main() {
         // 这是统一内存"性能不输显式拷贝"的关键。
         int dev = 0;
         CUDA_CHECK(cudaGetDevice(&dev));
+#if CUDART_VERSION >= 13000
+        // CUDA 13 起 cudaMemPrefetchAsync 的第 3 个参数由 device id 变成 cudaMemLocation
+        cudaMemLocation prefetchLoc{};
+        prefetchLoc.type = cudaMemLocationTypeDevice;
+        prefetchLoc.id   = dev;
+        CUDA_CHECK(cudaMemPrefetchAsync(uIn, bytes, prefetchLoc, 0, nullptr));
+#else
         CUDA_CHECK(cudaMemPrefetchAsync(uIn, bytes, dev, nullptr));
+#endif
 
         CudaTimer t;
         t.start();
@@ -177,12 +185,21 @@ int main() {
         // cudaMemAdvise 是"给驱动的建议"，不是强制命令。
         // cudaMemAdviseSetReadMostly：这块内存基本只读，
         //   驱动可以为它建立只读副本，提高命中率。
-        CUDA_CHECK(cudaMemAdvise(uIn, bytes, cudaMemAdviseSetReadMostly, 0));
+#if CUDART_VERSION >= 13000
+        // CUDA 13 起 cudaMemAdvise 的第 4 个参数由 device id 变成 cudaMemLocation
+        cudaMemLocation adviseLoc{};
+        adviseLoc.type = cudaMemLocationTypeDevice;
+        adviseLoc.id   = 0;
+        const cudaMemLocation adviseTarget = adviseLoc;
+#else
+        const int adviseTarget = 0;
+#endif
+        CUDA_CHECK(cudaMemAdvise(uIn, bytes, cudaMemAdviseSetReadMostly, adviseTarget));
 
         // cudaMemAdviseSetPreferredLocation：优先放在某个设备上。
         // cudaMemAdviseSetAccessedBy：允许某个设备直接访问这块内存，
         //   避免每次都建立映射。
-        CUDA_CHECK(cudaMemAdvise(uIn, bytes, cudaMemAdviseSetPreferredLocation, 0));
+        CUDA_CHECK(cudaMemAdvise(uIn, bytes, cudaMemAdviseSetPreferredLocation, adviseTarget));
 
         printf("D. cudaMemAdvise 调用成功（ReadMostly + PreferredLocation）\n");
         printf("   这类建议对【只读大数组】、【多 GPU 共享】等场景有明显收益，\n");

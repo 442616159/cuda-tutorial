@@ -27,7 +27,7 @@ else
   ARCH ?= -arch=sm_$(shell echo $(DETECT_CC) | tr -d '.')
 endif
 
-NVCCFLAGS ?= -O3 $(ARCH) -lineinfo -std=c++17
+NVCCFLAGS ?= -O3 $(ARCH) -lineinfo -std=c++17 --extended-lambda
 LDFLAGS   ?= -lcublas -lcufft -lcurand -lcusparse
 
 BIN_DIR   := bin
@@ -59,7 +59,7 @@ $(BIN_DIR)/%: $(BIN_DIR)
 	done; \
 	if [ -z "$$real" ]; then echo "找不到源文件: $*"; exit 1; fi; \
 	case "$$real" in \
-	  *dynparallel*)  EXTRA="-rdc=true" ;; \
+	  *dynparallel*)  EXTRA="-rdc=true -arch=sm_80 -DCUDA_FORCE_CDP1_IF_SUPPORTED" ;; \
 	  *cluster_dsm*)  EXTRA="-arch=sm_90" ;; \
 	  *vmm_alloc*)    EXTRA="-lcuda" ;; \
 	  *)              EXTRA="" ;; \

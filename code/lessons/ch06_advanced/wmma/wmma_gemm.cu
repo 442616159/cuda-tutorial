@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 //  code/lessons/ch06_advanced/wmma/wmma_gemm.cu
 //
 //  张量核心（Tensor Core）与 WMMA API：用 nvcuda::wmma 做 FP16 矩阵乘
@@ -20,6 +20,8 @@
 
 #include <cuda_fp16.h>
 #include <mma.h>
+// WMMA 的 fragment / load_matrix_sync / store_matrix_sync 都在 nvcuda::wmma 命名空间下
+using namespace nvcuda;
 
 #include <cmath>
 #include <cstdio>
