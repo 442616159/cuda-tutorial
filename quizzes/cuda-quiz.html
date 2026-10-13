@@ -1141,6 +1141,654 @@ const QUIZ_DATA = [
     answer: 1,
     explanation: "错。第 8 章的结业标准明确要求：可运行代码 + 有说服力的性能报告（环境信息、正确性验证、逐步收益拆解、ncu/nsys 数据）。只有“能跑”不构成交付，报告比代码本身更重要。"
   },
+  /* ===================== 第 0 章 · 补充 ===================== */
+  {
+    id: "ch00-q13", chapter: "ch00", type: "fill", difficulty: "⭐",
+    question: "核函数用 <code>____</code> 限定符声明（在设备上执行、由主机启动）；而只能在设备端被调用的辅助函数用 <code>____</code> 限定符。",
+    accepts: ["__global__###__device__", "__global__###__device__", "__global____device__"],
+    explanation: "__global__ 声明核函数（设备执行、主机通过 <<<>>> 启动、返回 void）；__device__ 声明只能在设备端调用的函数。另有 __host__ 表示主机端函数，__host__ __device__ 可两边都编。"
+  },
+  {
+    id: "ch00-q14", chapter: "ch00", type: "single", difficulty: "⭐",
+    question: "一个 <code>__global__</code> 核函数的返回类型必须是什么？",
+    options: ["int", "void", "cudaError_t", "任意类型均可"],
+    answer: 1,
+    explanation: "必须是 void。因为核函数的调用是异步“派发”，主机发出启动命令后立即返回，并没有一个位置来接收返回值。要拿结果就写进显存再拷回来，错误码则用 cudaGetLastError/cudaDeviceSynchronize 检查。"
+  },
+  {
+    id: "ch00-q15", chapter: "ch00", type: "single", difficulty: "⭐⭐",
+    question: "在 kernel 启动之后、读取结果之前，若想确认“启动本身没有出错”，应调用？",
+    options: [
+      "<code>cudaDeviceSynchronize()</code>",
+      "<code>cudaGetLastError()</code>（或教程里的 <code>CUDA_CHECK_KERNEL()</code>）",
+      "<code>cudaPeekAtLastError()</code> 必须配合 cudaFree",
+      "不需要检查，启动一定成功"
+    ],
+    answer: 1,
+    explanation: "核函数启动本身不返回错误码，必须用 cudaGetLastError()（教程封装为 CUDA_CHECK_KERNEL()）检查启动是否成功。cudaDeviceSynchronize() 是等执行完成，两者作用不同，通常都写。"
+  },
+  {
+    id: "ch00-q16", chapter: "ch00", type: "fill", difficulty: "⭐⭐",
+    question: "查询设备数量用 <code>cudaGetDeviceCount(&amp;n)</code>；获取第 0 号设备的完整属性结构体（如 SM 数量、共享内存上限）用 <code>cudaGetDeviceProperties(&amp;prop, 0)</code>，其结构体类型是 <code>cudaDevice____</code>。",
+    accepts: ["prop", "cudaDeviceProp"],
+    explanation: "cudaDeviceProp 结构体承载设备的全部属性（name、major/minor、multiProcessorCount、maxThreadsPerBlock、sharedMemPerBlock 等）。教程的 device_query.cu 就是打印它。"
+  },
+  {
+    id: "ch00-q17", chapter: "ch00", type: "multi", difficulty: "⭐⭐",
+    question: "关于 Compute Capability（CC），下列说法正确的有哪些？",
+    options: [
+      "格式为 major.minor，如 8.6、9.0",
+      "它决定 SM 内功能单元的组织、支持哪些指令、以及各类资源上限",
+      "编译参数 <code>-arch=sm_XY</code> 里的 XY 就是 CC",
+      "CC 越高，同一份 CUDA 代码就一定跑得越快"
+    ],
+    answer: [0, 1, 2],
+    explanation: "CC 是架构代号，决定指令集与资源上限，也是 -arch 的取值依据。D 错：CC 高只是“能用更多特性/上限更高”，实际快不快取决于代码是否用得上这些能力，以及是否访存受限等。"
+  },
+  {
+    id: "ch00-q18", chapter: "ch00", type: "single", difficulty: "⭐⭐",
+    question: "同一台机器上能否安装多个版本的 CUDA Toolkit？",
+    options: [
+      "不能，装新的必须卸载旧的",
+      "可以共存（Linux 常装在 /usr/local/cuda-11.8、/usr/local/cuda-12.2），用软链接或环境变量切换",
+      "只能装两个",
+      "只有 Windows 能共存"
+    ],
+    answer: 1,
+    explanation: "可以共存。Linux 下各版本装在不同目录，用 /usr/local/cuda 软链接或 PATH/LD_LIBRARY_PATH 切换；这也是切换不同项目 CUDA 版本的常用手法。"
+  },
+  {
+    id: "ch00-q19", chapter: "ch00", type: "judge", difficulty: "⭐⭐",
+    question: "编译 CUDA 程序并不需要显卡，nvcc 完全在 CPU 上工作；但没有 N 卡就无法运行。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "正确。nvcc 是纯主机侧编译器（调用宿主编译器 + ptxas），可以正常产出可执行文件；只是运行时会因为找不到 CUDA 设备而失败（no CUDA-capable device is detected）。"
+  },
+  {
+    id: "ch00-q20", chapter: "ch00", type: "fill", difficulty: "⭐⭐⭐",
+    question: "想在可执行文件里同时打包“sm_75 与 sm_86 的 SASS”以及“compute_90 的 PTX 作为兜底”，需要写多条 <code>-gencode</code>：<br><code>nvcc -gencode arch=compute_75,code=____ ...</code>",
+    accepts: ["sm_75", "sm75"],
+    explanation: "arch=compute_75,code=sm_75 表示“按 7.5 的标准生成 7.5 的 SASS”；而 code=compute_90 表示“只生成 PTX 不生成 SASS”，用作未知架构的兜底，让驱动去 JIT。"
+  },
+
+  /* ===================== 第 1 章 · 补充 ===================== */
+  {
+    id: "ch01-q13", chapter: "ch01", type: "fill", difficulty: "⭐",
+    question: "二维线程块的全局坐标：<code>col = blockIdx.x * blockDim.x + threadIdx.x</code>，那么行坐标写成 <code>row = _______________;</code>",
+    accepts: ["blockidx.y*blockdim.y+threadidx.y", "blockidx.y * blockdim.y + threadidx.y"],
+    explanation: "row = blockIdx.y * blockDim.y + threadIdx.y。二维公式就是“把一维公式写两遍”，两个方向互相独立，不需要背新公式。"
+  },
+  {
+    id: "ch01-q14", chapter: "ch01", type: "single", difficulty: "⭐",
+    question: "<code>dim3 a;</code> 声明的三个分量分别是多少？",
+    options: ["(0, 0, 0)", "(1, 1, 1)", "(0, 0, 1)", "未定义，必须显式初始化"],
+    answer: 1,
+    explanation: "dim3 的默认构造把三个分量都置为 1，不是 0。这个设计让一维写法自然退化：dim3 b(4) 即 (4,1,1)，且 blockIdx.x*blockDim.x+threadIdx.x 在 blockDim.y==1 时依然正确。"
+  },
+  {
+    id: "ch01-q15", chapter: "ch01", type: "fill", difficulty: "⭐⭐",
+    question: "<code>&lt;&lt;&lt;3, 4&gt;&gt;&gt;</code> 能直接写数字，是因为 dim3 有隐式转换，它等价于 <code>&lt;&lt;&lt;dim3(3,1,1), dim3(____)&gt;&gt;&gt;</code>。",
+    accepts: ["4,1,1", "dim3(4,1,1)", "4, 1, 1"],
+    explanation: "<<<3,4>>> 等价于 <<<dim3(3,1,1), dim3(4,1,1)>>>。这就是为什么一维场景可以简写成 <<<N, 256>>>。"
+  },
+  {
+    id: "ch01-q16", chapter: "ch01", type: "single", difficulty: "⭐⭐",
+    question: "一个 block 内的线程被切成 warp 后，若 <code>blockDim.x</code> 取 48，则这个块有多少个 warp？",
+    options: ["1 个", "1.5 个", "2 个", "48 个"],
+    answer: 2,
+    explanation: "warp 数 = 向上取整(48/32) = 2 个。第二个 warp 只有 16 个线程在干活，但调度资源按整个 warp 计——所以块大小取 32 的倍数才不浪费。"
+  },
+  {
+    id: "ch01-q17", chapter: "ch01", type: "multi", difficulty: "⭐⭐",
+    question: "关于三层线程结构，下列说法正确的有哪些？",
+    options: [
+      "同一个 block 一定被调度在同一个 SM 上，这保证块内共享内存与同步可行",
+      "不同 block 的执行顺序完全不确定，不能假设 Block 0 先于 Block 1 完成",
+      "blockDim 三个方向的乘积不能超过 1024",
+      "blockIdx 对同一个块内的所有线程都相同"
+    ],
+    answer: [0, 1, 2, 3],
+    explanation: "四项都正确。块是最小协作单元且整体落在同一 SM；块间顺序不确定（这是第 3 章块间同步问题的根源）；blockDim.x*y*z ≤ 1024；blockIdx 是“我在哪个块”，块内所有线程一致（threadIdx 才逐线程不同）。"
+  },
+  {
+    id: "ch01-q18", chapter: "ch01", type: "judge", difficulty: "⭐⭐",
+    question: "启动 <code>&lt;&lt;&lt;dim3(4,4), dim3(8,8)&gt;&gt;&gt;</code> 共产生 4×4×8×8 = 1024 个线程，其中一共 32 个 warp。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "总线程 4×4×8×8 = 1024；每块线程 8×8 = 64 = 2 个 warp；共 16 个块 → 16×2 = 32 个 warp。计算无误。"
+  },
+  {
+    id: "ch01-q19", chapter: "ch01", type: "fill", difficulty: "⭐⭐",
+    question: "把常量 1.0f 加到数组每个元素、且能处理任意长度 n 的 Grid-Stride 循环体：<br><code>for (; i &lt; n; i += stride) { out[i] = in[i] + ____; }</code>",
+    accepts: ["1.0f", "1.0", "1.f", "1.0f;"],
+    explanation: "填 1.0f。注意要写 f 后缀，否则字面量是 double，会引入不必要的双精度运算（GPU 上 double 吞吐远低于 float）。"
+  },
+  {
+    id: "ch01-q20", chapter: "ch01", type: "single", difficulty: "⭐⭐⭐",
+    question: "为什么说“索引公式正确”的判据是“双射”？",
+    options: [
+      "因为双射意味着运算次数最少",
+      "因为双射意味着每个线程算出的编号不重不漏地覆盖了 0~N-1，每个元素恰好被处理一次",
+      "因为双射能让 GPU 自动合并访存",
+      "双射是编译器要求的"
+    ],
+    answer: 1,
+    explanation: "把每个线程算出的编号列出来，看是否不重不漏覆盖 0~N-1（双射），就能验证索引公式对不对。这正是二维、三维、分块索引自检的万能办法。"
+  },
+
+  /* ===================== 第 2 章 · 补充 ===================== */
+  {
+    id: "ch02-q13", chapter: "ch02", type: "fill", difficulty: "⭐",
+    question: "在显存里分配、拷贝、释放的三个基本 API：申请用 <code>cudaMalloc</code>，搬运用 <code>cuda____</code>，释放用 <code>cudaFree</code>。",
+    accepts: ["memcpy", "cudaMemcpy"],
+    explanation: "cudaMalloc 申请、cudaMemcpy 搬运、cudaFree 释放。注意 cudaMalloc 通过二级指针 void** 传出地址，所以必须写 &d_ptr。"
+  },
+  {
+    id: "ch02-q14", chapter: "ch02", type: "single", difficulty: "⭐⭐",
+    question: "把数据从主机拷到设备，<code>cudaMemcpy</code> 的第 4 个参数应填？",
+    options: [
+      "<code>cudaMemcpyDeviceToHost</code>",
+      "<code>cudaMemcpyHostToDevice</code>",
+      "<code>cudaMemcpyDeviceToDevice</code>",
+      "<code>cudaMemcpyDefault</code> 是唯一正确选项"
+    ],
+    answer: 1,
+    explanation: "方向是从主机到设备，填 cudaMemcpyHostToDevice。四个枚举分别是 HostToDevice（准备输入）、DeviceToHost（取回结果）、DeviceToDevice（显存内搬运）、Default（由指针推断，有额外开销）。填反了是最常见的 bug 之一。"
+  },
+  {
+    id: "ch02-q15", chapter: "ch02", type: "fill", difficulty: "⭐⭐⭐",
+    question: "共享内存分块矩阵乘里，消除 bank conflict 的经典手法是给 tile 的第二维加 1 个 padding：把 <code>__shared__ float tile[32][32]</code> 改成 <code>__shared__ float tile[32][____]</code>。",
+    accepts: ["33", "32+1"],
+    explanation: "改成 tile[32][33]。加一列 padding 后，同一列的元素落到不同 bank，原本 32 路冲突变成无冲突。代价是共享内存占用略微增加。"
+  },
+  {
+    id: "ch02-q16", chapter: "ch02", type: "single", difficulty: "⭐⭐",
+    question: "寄存器溢出（spill）指的是？",
+    options: [
+      "寄存器数量超过每 SM 的物理上限，程序直接报错",
+      "需要的寄存器超过每线程上限（如 255）时，多出的局部变量被放到本地内存，而本地内存实际落在全局内存上，延迟极高",
+      "共享内存被当作寄存器使用",
+      "编译器把 float 提升为 double"
+    ],
+    answer: 1,
+    explanation: "寄存器不够用时，编译器把溢出的局部变量放进 local memory——它物理上位于显存，延迟与全局内存同级。这是性能杀手，可用 __launch_bounds__ 或 -maxrregcount 约束，并用 -Xptxas -v 观察。"
+  },
+  {
+    id: "ch02-q17", chapter: "ch02", type: "multi", difficulty: "⭐⭐",
+    question: "关于常量内存（<code>__constant__</code>）与只读缓存，下列说法正确的有哪些？",
+    options: [
+      "常量内存容量较小（每设备 64 KB）",
+      "同一 warp 内所有线程访问同一地址时会被广播，效率极高",
+      "warp 内线程访问常量内存的不同地址时会串行化，性能急剧下降",
+      "<code>__ldg</code> / <code>const __restrict__</code> 可引导数据走只读缓存路径"
+    ],
+    answer: [0, 1, 2, 3],
+    explanation: "四项都正确。常量内存适合“所有线程读同一个值”的场景（如卷积核权重、物理常数）；一旦 warp 内地址发散就会串行。__ldg 与 const __restrict__ 让编译器知道数据只读，从而使用只读数据缓存，提升命中率。"
+  },
+  {
+    id: "ch02-q18", chapter: "ch02", type: "judge", difficulty: "⭐⭐",
+    question: "动态共享内存用 <code>extern __shared__ float smem[];</code> 声明，实际字节数在启动时通过 <code>&lt;&lt;&lt;grid, block, sharedBytes&gt;&gt;&gt;</code> 的第三个参数指定。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "正确。必须写成不指定大小的 extern __shared__ float smem[];，大小由启动配置的第三个参数给出。写成 extern __shared__ float smem[256]; 是自相矛盾的错误写法。"
+  },
+  {
+    id: "ch02-q19", chapter: "ch02", type: "fill", difficulty: "⭐⭐",
+    question: "计算“实际占用率”时：若某卡每 SM 最多支持 1536 个线程，而 kernel 因寄存器/共享内存限制每 SM 只能驻留 768 个线程，则占用率为 ____%。",
+    accepts: ["50", "50%"],
+    explanation: "占用率 = 实际驻留线程数 / 每 SM 最大线程数 = 768/1536 = 50%。但占用率高不等于性能好：寄存器用得多往往意味着每线程复用了更多数据，可能反而更快。"
+  },
+  {
+    id: "ch02-q20", chapter: "ch02", type: "single", difficulty: "⭐⭐⭐",
+    question: "为什么说“共享内存的用法永远是搬一小块 → 用完 → 再搬下一小块”？",
+    options: [
+      "因为共享内存读写速度比寄存器慢",
+      "因为共享内存容量有限（每块 48~227 KB），装不下大矩阵，只能分块（Tiling）复用",
+      "因为编译器不支持大块共享内存",
+      "因为共享内存不能跨块共享"
+    ],
+    answer: 1,
+    explanation: "共享内存容量有限：老卡每块 48 KB，H100 最多 227 KB。256 线程共用 48 KB 平均每人只有 48 个 float，装不下整个 512×512 矩阵（1 MB）。所以用法必然是分块搬运、复用、再换下一块。"
+  },
+  /* ===================== 第 3 章 · 补充 ===================== */
+  {
+    id: "ch03-q13", chapter: "ch03", type: "fill", difficulty: "⭐",
+    question: "块内所有线程的集合点（屏障）用 <code>____()</code>；只同步一个 warp 内的 32 个线程用 <code>____()</code>。",
+    accepts: ["__syncthreads###__syncwarp", "__syncthreads()###__syncwarp()", "__syncthreads###__syncwarp()"],
+    explanation: "__syncthreads() 是块级屏障（要等最慢的 warp）；__syncwarp() 是 warp 级同步（代价极低，常配合 shuffle 使用）。选对级别是本章的核心判断力。"
+  },
+  {
+    id: "ch03-q14", chapter: "ch03", type: "single", difficulty: "⭐⭐",
+    question: "竞态条件（race condition）的准确含义是？",
+    options: [
+      "两个线程同时运行导致的性能下降",
+      "多个线程对同一内存位置做非原子的读-改-写，最终结果取决于执行顺序，因而不可预测",
+      "kernel 启动失败",
+      "共享内存容量不足"
+    ],
+    answer: 1,
+    explanation: "竞态的本质是“结果依赖不可控的执行顺序”。典型场景是多人同时往同一个累加器上加——每个线程各有一个自己的局部变量，但要合并到同一个全局位置时就必须原子操作或私有副本归并。"
+  },
+  {
+    id: "ch03-q15", chapter: "ch03", type: "fill", difficulty: "⭐⭐",
+    question: "共享内存归约的树形循环：<code>for (int s = blockDim.x / 2; s &gt; 0; s ____= 1) { if (tid &lt; s) sdata[tid] += sdata[tid + s]; __syncthreads(); }</code>",
+    accepts: [">>", ">>=", "= >>"],
+    explanation: "填 >>，即 s >>= 1（每轮规模减半：256→128→64→…→1）。注意 __syncthreads() 在 if 外面，保证所有线程都到达屏障，否则会死锁。"
+  },
+  {
+    id: "ch03-q16", chapter: "ch03", type: "single", difficulty: "⭐⭐⭐",
+    question: "为什么 __syncthreads() 不能放在“只有部分线程能到达”的分支里？",
+    options: [
+      "因为编译器会报错",
+      "因为屏障要求块内所有线程都到达，未到达的线程会让已到达的线程永远等待，造成死锁",
+      "因为会降低占用率",
+      "因为共享内存会越界"
+    ],
+    answer: 1,
+    explanation: "屏障语义是“块内所有线程在此集合后才放行”。若只有 tid<16 的线程进到屏障，其余 240 个永远不来，已到达者就永久阻塞。判断口诀：看“屏障这一行”在不在这条所有线程必经的路上。"
+  },
+  {
+    id: "ch03-q17", chapter: "ch03", type: "multi", difficulty: "⭐⭐",
+    question: "关于原子操作 atomicAdd/atomicCAS，下列说法正确的有哪些？",
+    options: [
+      "它保证“读-改-写”整体原子，不会被打断",
+      "争用严重时（几千线程抢同一地址）性能会显著下降",
+      "atomicCAS 可用来自己实现 double 的原子加、以及自旋锁",
+      "它比普通加法快，因为它走的是特殊硬件通路"
+    ],
+    answer: [0, 1, 2],
+    explanation: "A/B/C 都正确。D 错：原子操作并不更快，它只是“正确”。争用时硬件必须串行化，往往比普通访存慢得多，因此要用块内私有副本等手段降低争用。"
+  },
+  {
+    id: "ch03-q18", chapter: "ch03", type: "judge", difficulty: "⭐⭐",
+    question: "把 <code>__syncthreads()</code> 换成 <code>__threadfence()</code> 就能实现跨 block 的同步。",
+    options: ["正确", "错误"],
+    answer: 1,
+    explanation: "错。__threadfence() 是内存栅栏，只保证内存操作的可见顺序，它不阻塞线程、也不保证“别人已完成”。跨 block 只能靠 Cooperative Groups 的 grid.sync()（需协作启动）或多 kernel 拆分。"
+  },
+  {
+    id: "ch03-q19", chapter: "ch03", type: "fill", difficulty: "⭐⭐⭐",
+    question: "用事件表达“等流 A 的某个点完成后再启动流 B 的工作”，需要先 <code>cudaEventRecord(ev, streamA)</code>，再在流 B 上调用 <code>cudaStream____(streamB, ev, 0)</code>。",
+    accepts: ["waitevent", "cudaStreamWaitEvent"],
+    explanation: "cudaStreamWaitEvent(streamB, ev, 0) 让流 B 后续的工作等到事件 ev 发生后才执行，从而在不做全局同步的前提下表达跨流依赖。这是多流流水线的关键 API。"
+  },
+  {
+    id: "ch03-q20", chapter: "ch03", type: "single", difficulty: "⭐⭐⭐",
+    question: "用 Cooperative Groups 的 grid.sync() 做网格级同步，硬约束是什么？",
+    options: [
+      "没有任何约束，任何 kernel 都能用",
+      "必须用协作启动（cudaLaunchCooperativeKernel），且网格尺寸不能超过设备一次性可同时驻留的 block 数",
+      "只能用于 sm_90 以上",
+      "必须使用共享内存"
+    ],
+    answer: 1,
+    explanation: "grid.sync() 要求所有 block 同时在场，所以必须协作启动，且 grid 不能开得超过设备一次能同时驻留的块数（否则后到的块永远等不到先行的块完成）。这也是它代价“很高”的原因。"
+  },
+
+  /* ===================== 第 4 章 · 补充 ===================== */
+  {
+    id: "ch04-q13", chapter: "ch04", type: "fill", difficulty: "⭐",
+    question: "有效带宽的计算式（bytes 为搬运总字节数，ms 为耗时）为：<code>GB/s = bytes / (ms * 1e-3) / ____</code>",
+    accepts: ["1e9", "1E9", "1000000000", "1e9;"],
+    explanation: "除以 1e9 把字节/秒换算成 GB/s（教程 cuda_timer.h 的 bandwidthGBs 正是这么写的）。有效带宽是判断访存效率的核心指标。"
+  },
+  {
+    id: "ch04-q14", chapter: "ch04", type: "single", difficulty: "⭐⭐",
+    question: "算术强度（Arithmetic Intensity）的定义是？",
+    options: [
+      "总耗时 / 总线程数",
+      "浮点运算次数 / 搬运字节数（FLOP/Byte）",
+      "寄存器用量 / 共享内存用量",
+      "算力峰值 / 带宽峰值"
+    ],
+    answer: 1,
+    explanation: "算术强度 = FLOP / Byte，把“计算量”和“数据量”放在同一尺度上。它是 Roofline 模型的横轴：强度低于机器拐点 → 带宽受限；高于拐点 → 计算受限。"
+  },
+  {
+    id: "ch04-q15", chapter: "ch04", type: "fill", difficulty: "⭐⭐",
+    question: "用 <code>cudaEvent</code> 计时必须先预热、再多次测量取____（而不是只跑一次），以排除 JIT、上下文初始化与机器抖动的影响。",
+    accepts: ["中位数", "median", "中位值"],
+    explanation: "取中位数。教程的 CudaTimer::measure 就是“预热 warmup 次 + 跑 iters 次取中位数”。只测一次会被 JIT、首次分配、调度抖动严重污染，结论不可信。"
+  },
+  {
+    id: "ch04-q16", chapter: "ch04", type: "single", difficulty: "⭐⭐⭐",
+    question: "ncu 报告显示某 kernel 的“Achieved Occupancy”很低，且 Warp Stall Reasons 主要是“Long Scoreboard”。最可能的问题是？",
+    options: [
+      "计算单元不够用，需要减少浮点运算",
+      "驻留 warp 太少，无法隐藏全局内存的长延迟；应设法提高占用率或改善访存",
+      "共享内存 bank conflict 严重",
+      "寄存器溢出"
+    ],
+    answer: 1,
+    explanation: "Long Scoreboard 表示 warp 在等全局内存数据返回。GPU 靠“切换到别的 warp”来藏这个延迟，所以驻留 warp 太少（占用率低）就藏不住。对策：降低寄存器/共享内存压力提高占用率，或通过合并访存、分块复用来减少访存次数。"
+  },
+  {
+    id: "ch04-q17", chapter: "ch04", type: "multi", difficulty: "⭐⭐",
+    question: "关于 nsys（Nsight Systems）能回答的问题，下列正确的有哪些？",
+    options: [
+      "kernel 之间是否存在空隙（launch 开销是否成为瓶颈）",
+      "H2D/D2H 拷贝能否与计算重叠",
+      "CPU 侧是否是整体瓶颈",
+      "某个 kernel 内部具体哪条指令是热点"
+    ],
+    answer: [0, 1, 2],
+    explanation: "nsys 是系统级时间线，看的是“kernel 之间/拷贝与计算之间”的关系。D 属于 kernel 内部微观分析，那是 ncu（Nsight Compute）的职责。"
+  },
+  {
+    id: "ch04-q18", chapter: "ch04", type: "judge", difficulty: "⭐⭐",
+    question: "<code>--use_fast_math</code> 通过使用近似指令（如更快的除法/开方、刷新非规格化数）换取速度，因此可能改变数值结果，在对精度敏感的场景要慎用。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "正确。它牺牲 IEEE 严格语义换性能，可能带来细微数值差异。若你的结果要与参考实现严格对拍，或涉及累加精度敏感的场景，应先验证再采用。"
+  },
+  {
+    id: "ch04-q19", chapter: "ch04", type: "fill", difficulty: "⭐⭐⭐",
+    question: "优化方法论强调“先正确、再____、后优化”：在动手改任何东西之前，必须先有一个可复现的基准数字，否则无法判断改动是否真的有效。",
+    accepts: ["基线", "baseline", "测基线"],
+    explanation: "先建立基线。教程里小 A 改了三个月只快 3 毫秒，根因就是没有基线、没有测量体系，不知道真正的瓶颈在哪。"
+  },
+  {
+    id: "ch04-q20", chapter: "ch04", type: "single", difficulty: "⭐⭐⭐",
+    question: "为什么优化之后一定要重新跑一遍 compute-sanitizer？",
+    options: [
+      "因为 sanitizer 能提升性能",
+      "因为优化（尤其是改访存、加流水线、动同步）最容易破坏正确性，需要工具确认结果仍然正确",
+      "因为不跑就无法编译",
+      "因为 sanitizer 会顺便给出性能报告"
+    ],
+    answer: 1,
+    explanation: "优化与正确性天然对立：越激进的访存/同步改动越容易引入越界、竞态、可见性问题。compute-sanitizer 能查出这些错误，是“优化后上保险”的标准动作。"
+  },
+
+  /* ===================== 第 5 章 · 补充 ===================== */
+  {
+    id: "ch05-q13", chapter: "ch05", type: "fill", difficulty: "⭐",
+    question: "树形归约（Blelloch）的第一阶段——“上扫”阶段把相邻元素两两相加，使数组规模每轮减半，这个阶段英文叫 <code>____-sweep</code>。",
+    accepts: ["up", "up-sweep", "upsweep"],
+    explanation: "up-sweep（上扫）负责两两归并；对应的 down-sweep（下扫）负责把前缀和分发回各位置。这两棵树形阶段就是 Scan 的核心形状。"
+  },
+  {
+    id: "ch05-q14", chapter: "ch05", type: "single", difficulty: "⭐⭐",
+    question: "把“每个输出依赖输入的一个固定小邻域”的问题归类为哪种并行模式？",
+    options: ["Map", "Stencil", "Reduce", "Scatter"],
+    answer: 1,
+    explanation: "Stencil（模板/邻域计算），如卷积、热传导、Jacobi 迭代。它输出与输入同规模，但每个输出读一小片邻域，因此邻域元素被重复读，优化重点是用共享内存 tiling + halo 提高复用。"
+  },
+  {
+    id: "ch05-q15", chapter: "ch05", type: "fill", difficulty: "⭐⭐",
+    question: "共享内存 tiling 做 Stencil 时，除了中心的 tile 本体，还要额外载入边界外一圈数据供邻域计算使用，这一圈通常称为 <code>____</code> 区。",
+    accepts: ["halo", "Halo", "晕圈"],
+    explanation: "halo（晕圈）区。必须把 tile 外一圈也载入共享内存（二维时还要特别注意四个角），否则边界线程会读到错误数据。这样每点的全局访存可降到约 1 次。"
+  },
+  {
+    id: "ch05-q16", chapter: "ch05", type: "single", difficulty: "⭐⭐⭐",
+    question: "基数排序（Radix Sort）之所以能并行实现，关键依赖哪个原语？",
+    options: [
+      "atomicAdd",
+      "Scan（前缀和），因为需要按位做稳定的顺序划分",
+      "__syncthreads",
+      "warp shuffle"
+    ],
+    answer: 1,
+    explanation: "基数排序按位划分，要求“稳定”，而稳定划分的地址计算正是前缀和。所以基数排序是架在 Scan 之上的：每趟用 Scan 算出每个元素的新位置。"
+  },
+  {
+    id: "ch05-q17", chapter: "ch05", type: "multi", difficulty: "⭐⭐",
+    question: "关于 SpMV 的 CSR 格式与优化，下列说法正确的有哪些？",
+    options: [
+      "CSR 用 rowPtr / colIdx / values 三个数组表示稀疏矩阵",
+      "“每线程一行”适合行较长的矩阵，“每 warp 一行”适合行很短的情况",
+      "行内负载不均（有的行非零元很多、有的很少）会导致 warp 内线程空转",
+      "SpMV 是计算受限的，优化重点是提高浮点吞吐"
+    ],
+    answer: [0, 1, 2],
+    explanation: "A/B/C 正确。D 错：SpMV 的计算量极小（每非零元一次乘加），瓶颈在间接寻址与带宽，是典型的带宽受限，因此重点是访存而非浮点吞吐。"
+  },
+  {
+    id: "ch05-q18", chapter: "ch05", type: "judge", difficulty: "⭐⭐",
+    question: "共轭梯度（CG）求解器由 SpMV + 归约 + 逐元素向量运算拼成，其中 SpMV 是最耗时的部分。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "正确。CG 每次迭代包含一次 SpMV、两次内积（归约）、若干 SAXPY 类逐元素运算。SpMV 因为随机间接访存而占大头，所以 CG 的优化往往就是 SpMV 的优化。"
+  },
+  {
+    id: "ch05-q19", chapter: "ch05", type: "fill", difficulty: "⭐⭐⭐",
+    question: "Kahan 补偿求和通过额外维护一个____变量，把每次加法丢掉的低位误差累积起来，最后再补回总和中，从而缓解“大数吃小数”。",
+    accepts: ["补偿", "compensation", "c", "误差"],
+    explanation: "补偿（compensation）变量，通常记作 c。每次加法先减去上次的误差、再加回来，使舍入误差不再累积。代价是每步运算量增加数倍，但精度显著提升。"
+  },
+  {
+    id: "ch05-q20", chapter: "ch05", type: "single", difficulty: "⭐⭐⭐",
+    question: "为什么说归约（Reduce）的瓶颈不只是带宽，还有“同步层次”？",
+    options: [
+      "因为归约必须用原子操作",
+      "因为归约要把大量部分结果层层合并，每层都需要块内或 warp 内同步，同步开销随层次累加",
+      "因为归约不能使用共享内存",
+      "因为归约的输出必须是 double"
+    ],
+    answer: 1,
+    explanation: "归约是“树形合并”：线程内累加 → warp 内 shuffle → 块内共享内存树 → 块间二次归约。每上一层都要同步与数据交换，所以优化套路（顺序寻址减少同步次数、warp shuffle 免共享内存、循环展开）都是在降低同步与访存的开销。"
+  },
+  /* ===================== 第 6 章 · 补充 ===================== */
+  {
+    id: "ch06-q13", chapter: "ch06", type: "fill", difficulty: "⭐",
+    question: "在设备端（kernel 内部）启动另一个 kernel，这种能力叫“动态并行”，编译时必须加参数 <code>-____=true</code>。",
+    accepts: ["rdc", "-rdc", "rdc=true"],
+    explanation: "-rdc=true（relocatable device code，可重定位设备代码）。没有它，设备端 <<<>>> 直接编译报错。此外 CUDA 13 上目标架构必须低于 sm_90，Windows x64 还需 -DCUDA_FORCE_CDP1_IF_SUPPORTED。"
+  },
+  {
+    id: "ch06-q14", chapter: "ch06", type: "single", difficulty: "⭐⭐",
+    question: "使用 WMMA（Tensor Core）写矩阵乘，需要包含哪个头文件？",
+    options: ["<code>&lt;cuda_runtime.h&gt;</code>", "<code>&lt;mma.h&gt;</code>", "<code>&lt;cuda_pipeline.h&gt;</code>", "<code>&lt;cooperative_groups.h&gt;</code>"],
+    answer: 1,
+    explanation: "<mma.h> 提供 nvcuda::wmma 命名空间。cuda_pipeline.h 是 cp.async 用的，cooperative_groups.h 是 CG 用的。"
+  },
+  {
+    id: "ch06-q15", chapter: "ch06", type: "fill", difficulty: "⭐⭐",
+    question: "从 Ampere（CC 8.0）起，Tensor Core 支持一种精度介于 FP16 与 FP32 之间的输入格式，它的名字是 <code>____</code>（19 位，8 位指数 + 10 位尾数）。",
+    accepts: ["tf32", "TF32"],
+    explanation: "TF32（TensorFloat-32）。它保持 FP32 的动态范围，尾数精度接近 FP16，可在不明显损失精度的情况下让 Tensor Core 处理原本的 FP32 数据。"
+  },
+  {
+    id: "ch06-q16", chapter: "ch06", type: "single", difficulty: "⭐⭐⭐",
+    question: "线程块集群（Cluster）相比普通 block，最核心的能力是？",
+    options: [
+      "让 block 运行得更快（主频更高）",
+      "让同一集群内的 block 通过分布式共享内存（DSM）直接互相访问对方共享内存，不必绕道全局内存",
+      "让 block 数量突破 2^31 限制",
+      "让所有 block 强制同步"
+    ],
+    answer: 1,
+    explanation: "集群的关键价值是 DSM：集群内的块能直接读写彼此的共享内存，省掉“写回全局内存再读回来”的往返。典型收益场景是 stencil 的 halo 数据交换。需要 CC 9.0（Hopper）及以上。"
+  },
+  {
+    id: "ch06-q17", chapter: "ch06", type: "multi", difficulty: "⭐⭐",
+    question: "关于多 GPU 编程，下列说法正确的有哪些？",
+    options: [
+      "cudaDeviceCanAccessPeer 返回 0 表示不支持直连（不是报错）",
+      "开启 peer access 后可用 cudaMemcpyPeer 在两卡显存间直接拷贝",
+      "集合通信（all-reduce 等）通常交给 NCCL 而不是手写",
+      "任何两张 NVIDIA 显卡之间都一定支持 P2P"
+    ],
+    answer: [0, 1, 2],
+    explanation: "A/B/C 正确。D 错：P2P 能力取决于主板、PCIe 拓扑、是否 NVLink 等；返回 0 时只能走主机内存中转，性能差很多。集合通信应交给 NCCL。"
+  },
+  {
+    id: "ch06-q18", chapter: "ch06", type: "judge", difficulty: "⭐⭐",
+    question: "统一内存（cudaMallocManaged）虽然让 CPU 和 GPU 共用同一个指针，但在设备端按需取页时，数据其实是在主机内存与显存之间逐页迁移的。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "正确。统一内存在统一虚拟地址空间里分配，指针值两边相同；驱动按需把页在主机内存与显存间迁移。这也是“抖动”的根源，需要用 cudaMemPrefetchAsync 提前整箱预取来避免。"
+  },
+  {
+    id: "ch06-q19", chapter: "ch06", type: "fill", difficulty: "⭐⭐⭐",
+    question: "cp.async 搭软件流水线时，通常准备多块（stage）共享内存缓冲区轮流使用，这种“用一块、加载下一块”的结构称为 <code>____ buffering</code>。",
+    accepts: ["double", "double buffering", "多阶段", "multi-stage"],
+    explanation: "double buffering（双缓冲），也可扩展为多阶段。cp.async 让“把下一块数据从全局内存搬到共享内存”与“计算当前块”重叠，从而隐藏访存延迟；stage 数越多越能容忍长延迟，但占用更多共享内存。"
+  },
+  {
+    id: "ch06-q20", chapter: "ch06", type: "single", difficulty: "⭐⭐⭐",
+    question: "关于 CUDA Graphs 与传统逐个启动 kernel，最准确的说法是？",
+    options: [
+      "Graphs 能减少 kernel 的计算量",
+      "Graphs 把一串启动一次性提交，省掉的是每个 kernel 的启动开销与 CPU 侧提交开销，计算时间不变",
+      "Graphs 只能用于单 kernel",
+      "Graphs 会自动并行化有依赖的 kernel"
+    ],
+    answer: 1,
+    explanation: "Graphs 优化的是“启动/提交”这一段固定开销。当一段管线里有几十个只跑几微秒的 kernel 时，启动开销可能比计算还长，此时收益最明显；但每个 kernel 的计算量本身不变，依赖关系也仍需你自己表达正确。"
+  },
+
+  /* ===================== 第 7 章 · 补充 ===================== */
+  {
+    id: "ch07-q13", chapter: "ch07", type: "fill", difficulty: "⭐",
+    question: "cuBLAS 中做单精度矩阵乘的函数名是 <code>cublas____</code>（S 表示 single precision）。",
+    accepts: ["sgemm", "cublasSgemm"],
+    explanation: "cublasSgemm。命名规则：cublas + 精度前缀（S/D/C/Z）+ 操作名（gemm）。它计算 C = alpha*op(A)*op(B) + beta*C。"
+  },
+  {
+    id: "ch07-q14", chapter: "ch07", type: "single", difficulty: "⭐⭐",
+    question: "cuBLAS 里 <code>lda</code>（leading dimension of A）的含义是？",
+    options: [
+      "矩阵 A 的行数",
+      "矩阵 A 的列数",
+      "矩阵 A 相邻两列（列主序下）元素之间的跨度，即“一列有多少个元素”",
+      "矩阵 A 的元素总个数"
+    ],
+    answer: 2,
+    explanation: "前导维度表示沿存储方向的相邻列（cuBLAS 为列主序）之间的跨度。行主序数组传给 cuBLAS 时，lda 通常取该数组的“每行元素数”。搞错 lda 是 cuBLAS 最常见的错误之一。"
+  },
+  {
+    id: "ch07-q15", chapter: "ch07", type: "fill", difficulty: "⭐⭐",
+    question: "cuRAND 在设备端生成随机数的典型流程：先用 <code>curand____(state, seed, seq, offset)</code> 初始化每个线程的随机数状态，再用 <code>curand_uniform</code> 等函数取值。",
+    accepts: ["init", "curand_init"],
+    explanation: "curand_init 为每个线程初始化独立的随机数状态（需要给不同的 seed/sequence/offset 以避免线程间重复）。之后在 kernel 里调用 curand_uniform / curand_normal 等生成随机数。"
+  },
+  {
+    id: "ch07-q16", chapter: "ch07", type: "single", difficulty: "⭐⭐⭐",
+    question: "Thrust 与 CUB 的关系，哪个描述最准确？",
+    options: [
+      "两者是竞争关系，只能选一个",
+      "Thrust 提供面向整容器的高层算法接口，CUB 提供块级/设备级原语，二者可混用，CUB 更贴近底层、可控性更强",
+      "CUB 是 Thrust 的旧版本",
+      "Thrust 只能排序，CUB 只能归约"
+    ],
+    answer: 1,
+    explanation: "Thrust 高层易用（thrust::sort 三行搞定），CUB 提供 DeviceReduce / DeviceScan / DeviceRadixSort 等原语，粒度更细、更贴近硬件，也常被 Thrust 内部调用。二者可混用。"
+  },
+  {
+    id: "ch07-q17", chapter: "ch07", type: "multi", difficulty: "⭐⭐",
+    question: "把 CUDA 代码做成一个可交付的工程，通常需要哪些要素？",
+    options: [
+      "CMake 构建（用 enable_language(CUDA) 或 find_package(CUDAToolkit)）",
+      "在没有 GPU 的机器上也能配置/编译（CPU 路径回退或条件编译）",
+      "用 ctest 接入的单元测试，失败时返回非零退出码",
+      "必须把 .cu 文件改名为 .cpp 才能被 CMake 识别"
+    ],
+    answer: [0, 1, 2],
+    explanation: "A/B/C 是工程化的标准要素。D 错：CMake 从 3.8/3.18 起原生支持 CUDA 作为一等语言，.cu 文件会被正确分派给 nvcc，不需要改名。"
+  },
+  {
+    id: "ch07-q18", chapter: "ch07", type: "judge", difficulty: "⭐⭐",
+    question: "cuFFT 的正变换不做 1/N 归一化，逆变换也不会自动除以 N，所以 ifft(fft(x)) 会得到 N·x，需要自己补上归一化因子。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "正确。cuFFT 两条变换都不带归一化，往返后会差一个 N 倍因子。这是与 NumPy（默认归一化在逆变换）行为不一致的地方，对拍时最容易踩。"
+  },
+  {
+    id: "ch07-q19", chapter: "ch07", type: "fill", difficulty: "⭐⭐⭐",
+    question: "把已有 CUDA 代码迁移到 AMD GPU，最省力的路线是用 <code>____</code> 工具自动转换（如 cudaMalloc → hipMalloc），再针对差异手工调整。",
+    accepts: ["hipify", "hipify-perl", "hipify-clang"],
+    explanation: "hipify（含 hipify-perl / hipify-clang）能把 CUDA API 与 kernel 启动语法自动转成 HIP 形式。因为 HIP 与 CUDA API 高度对应，这是跨平台迁移的首选起点，但仍需手工处理架构差异与库替代。"
+  },
+  {
+    id: "ch07-q20", chapter: "ch07", type: "single", difficulty: "⭐⭐⭐",
+    question: "在 PyTorch 里用自定义 CUDA 扩展实现一个算子，正确的做法是？",
+    options: [
+      "直接写一个 .cu 文件，Python 无法调用",
+      "用 torch.utils.cpp_extension（或 setup.py + CUDAExtension）编译出扩展模块，在 C++ 侧暴露函数并注册为 autograd Function / torch.ops 算子",
+      "必须重写整个 PyTorch",
+      "只能用 Python 重写，不能用 CUDA"
+    ],
+    answer: 1,
+    explanation: "标准路径是用 torch.utils.cpp_extension.load / CUDAExtension 编译，C++ 侧用 pybind11 或 TORCH_LIBRARY 暴露接口，并在需要反向传播时注册 autograd Function。这样才能在 Python 里无缝调用自定义 kernel。"
+  },
+
+  /* ===================== 第 8 章 · 补充 ===================== */
+  {
+    id: "ch08-q13", chapter: "ch08", type: "fill", difficulty: "⭐",
+    question: "SGEMM 渐进优化中，v5 版本用 <code>____</code> 类型一次加载 4 个 float，实现向量化访存，减少访存指令数。",
+    accepts: ["float4", "float 4"],
+    explanation: "float4。一次 128 位加载等于四条 float 加载的吞吐，能显著降低指令开销、提升访存效率（注意数据需 16 字节对齐，cudaMalloc 默认满足）。"
+  },
+  {
+    id: "ch08-q14", chapter: "ch08", type: "single", difficulty: "⭐⭐",
+    question: "衡量一个 GPU 项目“做完了”的核心标准是？",
+    options: [
+      "代码能编译通过",
+      "在作者自己的机器上能跑出正确结果",
+      "别人（或干净机器）拿到代码后能按 README 复现出同样的数字",
+      "用了尽可能多的 CUDA 高级特性"
+    ],
+    answer: 2,
+    explanation: "可复现性才是交付标准：陌生人照 README 能在合理时间内复现你的结果。这就需要 README、性能报告、Profile 证据、验证脚本这“四件套”，而不仅是“我这里能跑”。"
+  },
+  {
+    id: "ch08-q15", chapter: "ch08", type: "fill", difficulty: "⭐⭐",
+    question: "N 体模拟用共享内存分块降低全局访存，并用____积分器保证长期模拟中能量守恒，作为数值正确性的硬验证。",
+    accepts: ["辛", "symplectic", "辛积分器"],
+    explanation: "辛积分器（symplectic integrator，如 leapfrog / velocity Verlet）。它保持相空间体积，长时间积分不产生系统性能量漂移；而普通欧拉法会。这是验证物理模拟正确性的有力手段。"
+  },
+  {
+    id: "ch08-q16", chapter: "ch08", type: "single", difficulty: "⭐⭐⭐",
+    question: "性能报告里“逐步收益拆解”的正确写法是？",
+    options: [
+      "只给最终性能一个数字",
+      "只贴 ncu 截图，不写文字",
+      "列出每一步优化后的指标（耗时/带宽/算力）及其相对上一步的增量，并说明该步改动的理由",
+      "把所有版本的平均值合成一个数"
+    ],
+    answer: 2,
+    explanation: "逐步拆解的意义在于说明“哪一步带来了多少收益、为什么”——这才让别人能判断你的优化思路是否可迁移。只有一个最终数字无法证明“快在哪”，也无法定位哪一步无效。"
+  },
+  {
+    id: "ch08-q17", chapter: "ch08", type: "multi", difficulty: "⭐⭐",
+    question: "关于光线追踪项目（每像素一线程），下列说法正确的有哪些？",
+    options: [
+      "不同像素的射线可能命中不同物体，容易造成 warp 内分支发散",
+      "画面中复杂区域与简单区域的耗时差异导致负载不均",
+      "场景数据（球体、光源、材质）适合放在常量内存或只读缓存中",
+      "因为每像素独立，所以不存在任何性能问题"
+    ],
+    answer: [0, 1, 2],
+    explanation: "A/B/C 都是这类“每线程一任务”程序的典型特征：分支发散、负载不均、场景数据只读且全线程共用（适合常量内存/只读缓存）。D 错：恰好相反，这些正是它的性能难点，需要专门的调度与数据布局手段。"
+  },
+  {
+    id: "ch08-q18", chapter: "ch08", type: "judge", difficulty: "⭐⭐",
+    question: "正确的项目顺序是“先正确、再建立基线、然后 profile 定位瓶颈、改动后再回归验证”，而不是一上来就套用听说过的优化技巧。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "正确。这正是第 4 章的五步闭环。第 8 章要求你把整条闭环独立走完一遍——这是“能不能独立做项目”的真正考题，也是大多数初学者卡住的地方。"
+  },
+  {
+    id: "ch08-q19", chapter: "ch08", type: "fill", difficulty: "⭐⭐⭐",
+    question: "衡量 SGEMM 性能的常用指标是 <code>____</code>（每秒十亿次浮点运算），并与 cuBLAS 的实测值对比来评估“离峰值还有多远”。",
+    accepts: ["GFLOPS", "gflops", "GFLOP/s", "GFLOPS/s"],
+    explanation: "GFLOPS。SGEMM 的浮点运算次数 = 2*M*N*K（每元素 K 次乘加，乘加各算一次），除以耗时即得 GFLOPS。与 cuBLAS 对比能直观看出差距：手写通常只有峰值的 15%~40%，cuBLAS 可达 70%~90%。"
+  },
+  {
+    id: "ch08-q20", chapter: "ch08", type: "single", difficulty: "⭐⭐⭐",
+    question: "如果结业项目只做一个，教程最推荐哪个？为什么？",
+    options: [
+      "光线追踪，因为视觉效果好",
+      "SGEMM，因为它是所有 GPU 优化技术的练兵场（分块、向量化、流水线、寄存器压力、与库对比）",
+      "CNN 推理核，因为最难",
+      "随便哪个都一样"
+    ],
+    answer: 1,
+    explanation: "推荐 SGEMM。它把第 2 章的分块与共享内存、bank conflict 消除、float4 向量化、第 6 章的流水线、第 7 章的与库对比串成一条线，且每一步都有可测收益。这里学到的思想会迁移到光线追踪、SpMV、stencil 等几乎所有项目。"
+  },
+
 ];
 
 /* ============================ 渲染与交互 ============================ */
