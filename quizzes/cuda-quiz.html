@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CUDA 学习测验 · 全章节</title>
+<style>
+  :root {
+    --bg: #0f1623;
+    --card: #1b2435;
+    --card-2: #212c42;
+    --text: #e6ecf5;
+    --muted: #93a1bd;
+    --accent: #76b900;
+    --accent-2: #4ea1ff;
+    --ok: #2ecc71;
+    --bad: #ff5d6c;
+    --warn: #ffd166;
+    --line: #2c3852;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+  header {
+    background: linear-gradient(135deg, #76b900 0%, #2a9d8f 55%, #4ea1ff 100%);
+    color: #08121f;
+    padding: 28px 22px 22px;
+  }
+  header h1 { margin: 0 0 6px; font-size: 24px; }
+  header p { margin: 0; font-size: 14px; opacity: .85; }
+  .toolbar {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    padding: 14px 22px; border-bottom: 1px solid var(--line);
+    background: #131c2c;
+  }
+  .toolbar label { font-size: 13px; color: var(--muted); }
+  select, button {
+    font: inherit; border-radius: 8px; border: 1px solid var(--line);
+    padding: 8px 12px; background: var(--card); color: var(--text); cursor: pointer;
+  }
+  select:focus, button:focus { outline: 2px solid var(--accent-2); }
+  .stats { margin-left: auto; font-size: 13px; color: var(--muted); }
+  .stats b { color: var(--text); }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 22px; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 18px 20px; margin-bottom: 18px; box-shadow: 0 6px 18px rgba(0,0,0,.25);
+  }
+  .card .meta { font-size: 12px; color: var(--muted); margin-bottom: 8px; display:flex; gap:10px; flex-wrap:wrap; }
+  .tag { background: var(--card-2); border:1px solid var(--line); padding: 2px 8px; border-radius: 999px; }
+  .q { font-size: 16px; font-weight: 600; margin: 4px 0 14px; }
+  .q code, .card code {
+    background:#0c1320; border:1px solid var(--line); padding: 1px 6px; border-radius:6px;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; color:#aee; white-space: normal;
+  }
+  .options { display: flex; flex-direction: column; gap: 10px; }
+  .opt {
+    display: flex; align-items: flex-start; gap: 10px; padding: 11px 13px;
+    background: var(--card-2); border: 1px solid var(--line); border-radius: 10px;
+    cursor: pointer; transition: .15s;
+  }
+  .opt:hover { border-color: var(--accent-2); }
+  .opt .mark { flex: 0 0 22px; height: 22px; border-radius: 50%; border: 1px solid var(--muted);
+    display:flex; align-items:center; justify-content:center; font-size: 13px; color: var(--muted); }
+  .opt.correct { border-color: var(--ok); background: rgba(46,204,113,.12); }
+  .opt.correct .mark { border-color: var(--ok); color:#08121f; background: var(--ok); }
+  .opt.wrong { border-color: var(--bad); background: rgba(255,93,108,.12); }
+  .opt.wrong .mark { border-color: var(--bad); color:#fff; background: var(--bad); }
+  .opt.dim { opacity: .45; }
+  .opt.picked { border-color: var(--accent-2); background: rgba(78,161,255,.16); }
+  .opt.picked .mark { border-color: var(--accent-2); color:#08121f; background: var(--accent-2); }
+  .fillrow { display:flex; gap:10px; flex-wrap: wrap; align-items:center; }
+  .fillrow input {
+    flex: 1 1 260px; min-width: 220px; font: inherit; padding: 10px 12px; border-radius: 8px;
+    border: 1px solid var(--line); background:#0c1320; color: var(--text);
+    font-family:"SFMono-Regular", Consolas, monospace;
+  }
+  .btn { background: var(--accent); color:#08121f; border:none; font-weight:700; }
+  .btn.ghost { background: transparent; border:1px solid var(--line); color: var(--text); font-weight:500; }
+  .feedback { margin-top: 10px; font-size: 14px; }
+  .feedback.ok { color: var(--ok); }
+  .feedback.bad { color: var(--bad); }
+  .explain {
+    margin-top: 14px; padding: 12px 14px; border-left: 3px solid var(--warn);
+    background: rgba(255,209,102,.08); border-radius: 0 10px 10px 0; font-size: 14px;
+  }
+  .explain .h { color: var(--warn); font-weight: 700; margin-bottom: 6px; }
+  details.short summary { cursor:pointer; color: var(--accent-2); font-weight:600; }
+  details.short[open] summary { margin-bottom: 10px; }
+  .hidden { display: none; }
+  footer { text-align:center; color: var(--muted); font-size:12px; padding: 30px 0 50px; }
+  .empty { text-align:center; color: var(--muted); padding: 40px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🧪 CUDA 学习测验（网页版 · 全章节）</h1>
+  <p>覆盖第 0~8 章 · 答完可立即查看正确答案与解析 · 无需联网、无依赖，双击即可使用</p>
+</header>
+
+<div class="toolbar">
+  <label for="chapter">章节：</label>
+  <select id="chapter"><option value="all">全部</option></select>
+  <label for="type">题型：</label>
+  <select id="type">
+    <option value="all">全部</option>
+    <option value="single">单选题</option>
+    <option value="multi">多选题</option>
+    <option value="judge">判断题</option>
+    <option value="fill">代码填空</option>
+    <option value="short">简答题</option>
+  </select>
+  <button id="reset" class="ghost">🔄 重置作答</button>
+  <div class="stats" id="stats">已答 <b>0</b> / 正确 <b>0</b> / 正确率 <b>—</b></div>
+</div>
+
+<div class="wrap" id="quiz"></div>
+
+<footer>
+  题库数据在文件顶部的 <code>QUIZ_DATA</code> 中，按章节扩展即可。
+</footer>
+
+<script>
+/* =========================================================================
+ * 题库数据：每个对象是一道题目。
+ * 字段：id / chapter / type / difficulty / question / options /
+ *       answer / accepts / explanation
+ * ========================================================================= */
+const CHAPTERS = {
+  ch00: "第 0 章 · 环境搭建与第一个程序",
+  ch01: "第 1 章 · 编程模型与线程索引",
+  ch02: "第 2 章 · 内存层次与访存优化",
+  ch03: "第 3 章 · 同步、通信与原子操作",
+  ch04: "第 4 章 · 性能分析与优化方法论",
+  ch05: "第 5 章 · 核心算法模式实战",
+  ch06: "第 6 章 · CUDA 高级特性",
+  ch07: "第 7 章 · 生态库与工程化",
+  ch08: "第 8 章 · 综合项目实战",
+};
+
+const QUIZ_DATA = [
+  /* ===================== 第 0 章 ===================== */
+  {
+    id: "ch00-q1", chapter: "ch00", type: "single", difficulty: "⭐",
+    question: "关于 <code>nvidia-smi</code> 顶部显示的 <code>CUDA Version: 12.2</code>，下列说法正确的是？",
+    options: [
+      "它表示你当前安装的 CUDA Toolkit 版本是 12.2",
+      "它表示你的驱动最高能支持的 CUDA 运行时版本（一道天花板）",
+      "它由 nvcc 的版本决定",
+      "它必须等于你装的 Toolkit 版本，否则无法编译"
+    ],
+    answer: 1,
+    explanation: "nvidia-smi 里的 CUDA Version 是“当前驱动最高支持到哪个 CUDA 运行时版本”，是一道天花板。你可以装更旧的 Toolkit（新驱动向下兼容），但装更高的会失败。实际装的版本要看 nvcc --version。"
+  },
+  {
+    id: "ch00-q2", chapter: "ch00", type: "single", difficulty: "⭐",
+    question: "你的驱动支持到 CUDA 12.2，显卡 CC 是 8.6。编译时 <code>-arch</code> 填错，下列哪种情况最严重？",
+    options: [
+      "填 <code>sm_75</code>（偏低）",
+      "填 <code>sm_89</code>（偏高）",
+      "不填（用默认目标）",
+      "三种情况一样严重"
+    ],
+    answer: 1,
+    explanation: "填偏高（sm_89）会报 no kernel image is available for execution on the device，直接跑不起来；填偏低（sm_75）只是走 PTX JIT，慢一点但能跑。所以不确定时宁可填低一点。"
+  },
+  {
+    id: "ch00-q3", chapter: "ch00", type: "multi", difficulty: "⭐",
+    question: "CUDA 的异构模型中，下列描述正确的有哪些？",
+    options: [
+      "Host（CPU）负责分配显存、拷贝数据、启动 kernel、读回结果",
+      "Device（GPU）负责执行成千上万个线程做并行计算",
+      "CPU 的内存 GPU 看不见，GPU 的显存 CPU 也不能直接读，必须显式搬运",
+      "kernel 函数可以有返回值，返回值通过 <<<>>> 传回 host"
+    ],
+    answer: [0, 1, 2],
+    explanation: "Host/Device 各自有独立地址空间，数据必须搬运；kernel 用 __global__ 声明、返回类型必须是 void（调用是异步派活，返回值没地方放），所以 D 错。"
+  },
+  {
+    id: "ch00-q4", chapter: "ch00", type: "judge", difficulty: "⭐",
+    question: "nvcc 编译一个 .cu 文件时，会把 GPU 代码编译成 SASS，把 CPU 代码交给 gcc/cl.exe，最后链接成同一个可执行文件。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: ".cu 被拆成两部分：GPU 代码经 ptxas 成 SASS 装进 fatbin，CPU 代码交给宿主编译器成 .o，最后由 host 链接器与 libcudart 链接成可执行文件。"
+  },
+  {
+    id: "ch00-q5", chapter: "ch00", type: "judge", difficulty: "⭐⭐",
+    question: "设备端 printf 在 kernel 跑完前若程序就 return，输出可能被丢弃——因此必须在需要结果时加 <code>cudaDeviceSynchronize()</code>。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "设备端 printf 先写入缓冲区，由运行时统一取出。如果程序在 kernel 跑完前结束，缓冲里的输出会被丢弃。这正是“kernel 是异步的”的典型后果。"
+  },
+  {
+    id: "ch00-q6", chapter: "ch00", type: "fill", difficulty: "⭐⭐",
+    question: "补全启动配置：<code>helloFromGPU&lt;&lt;&lt;1, 1&gt;&gt;&gt;();</code> 表示共启动 ____ 个块、每块 ____ 个线程，总线程数为 ____。",
+    accepts: ["1|1|1", "1 | 1 | 1"],
+    explanation: "第一个数是 grid 里的块数，第二个数是每块线程数，总线程数 = 第一个数 × 第二个数。所以 <<<1,1>>> 是 1×1 = 1 个线程；<<<1,4>>> 则打印 4 次。"
+  },
+  {
+    id: "ch00-q7", chapter: "ch00", type: "single", difficulty: "⭐⭐",
+    question: "关于 PTX 与 SASS 的区别，正确的是？",
+    options: [
+      "PTX 是具体架构的机器码，SASS 是与架构无关的虚拟汇编",
+      "SASS 是虚拟汇编，PTX 是具体机器码",
+      "PTX 是与架构无关的虚拟汇编，SASS 是具体架构的机器码",
+      "两者完全是一回事，只是叫法不同"
+    ],
+    answer: 2,
+    explanation: "PTX 是虚拟/中间汇编（世界语，到哪都能翻译，但需 JIT 编译）；SASS 是真正在 GPU 上跑的机器码（方言，零延迟但换架构就不懂）。fatbin 把多种 SASS+PTX 打包。"
+  },
+  {
+    id: "ch00-q8", chapter: "ch00", type: "single", difficulty: "⭐⭐",
+    question: "第一次运行某 CUDA 程序特别慢，之后就快了，最可能的原因是？",
+    options: [
+      "GPU 在预热，温度升上去才跑得快",
+      "驱动在做 PTX→SASS 的 JIT 编译（现场编译并缓存）",
+      "CUDA 第一次初始化很慢，之后复用上下文",
+      "显存碎片导致首次分配慢"
+    ],
+    answer: 1,
+    explanation: "fatbin 里若带 PTX，在没有预编译架构的卡上运行时，驱动会把 PTX 现场 JIT 成 SASS，首次有编译开销，编译结果会缓存，之后就快了。"
+  },
+  {
+    id: "ch00-q9", chapter: "ch00", type: "multi", difficulty: "⭐⭐",
+    question: "下列现象，哪些大概率属于“环境问题”而非“代码问题”？",
+    options: [
+      "<code>nvidia-smi</code> 就报错",
+      "<code>nvcc: command not found</code>",
+      "编译通过、运行输出全 0 或垃圾值",
+      "编译通过、运行报 <code>no CUDA-capable device is detected</code>"
+    ],
+    answer: [0, 1, 3],
+    explanation: "心法：“编译期的问题基本都是环境问题，运行期的问题才可能是代码问题”。nvidia-smi 报错、nvcc 找不到、no CUDA-capable device 都是环境/驱动/权限问题；输出全 0 或垃圾值通常是代码（忘了拷贝/索引算错）。"
+  },
+  {
+    id: "ch00-q10", chapter: "ch00", type: "short", difficulty: "⭐⭐",
+    question: "简述 nvcc 编译 .cu 的“两条命”流程：同一个 __global__ 函数，在 CPU 侧和 GPU 侧分别变成了什么？",
+    explanation: "nvcc 前端扫描 __global__/__device__ 标记，把 GPU 代码切出去、CPU 代码留下。GPU 侧：编译成 SASS 机器码装进 fatbin，运行时由 GPU 真正执行。CPU 侧：函数体被“掏空”成空壳，调用它等价于一次 cudaLaunchKernel 运行时调用——CPU 从不在本地执行那行 printf，它只是“派活”。"
+  },
+  {
+    id: "ch00-q11", chapter: "ch00", type: "judge", difficulty: "⭐⭐",
+    question: "<code>-arch=sm_75</code> 表示“生成能在 sm_75 上直接跑的 SASS”，而 <code>arch=compute_75,code=compute_75</code> 表示“只生成面向 7.5 的 PTX（世界语）”。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "sm_XX = 生成该架构直接的 SASS（方言）；compute_XX = 生成 PTX（世界语）。写 code=compute_90 常用于“只带 PTX 兜底”，让未知架构走 JIT。"
+  },
+  {
+    id: "ch00-q12", chapter: "ch00", type: "judge", difficulty: "⭐⭐",
+    question: "<code>cudaDeviceSynchronize()</code> 会让 host 等待 GPU 把队列里的活干完，因此它既是保证正确读回结果的手段，也是性能优化的“敌人”。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "同步保证结果可读、printf 刷出，但会打断 CPU/GPU 重叠。追求性能时要把同步次数降到最少（例如用流与事件表达依赖），而不是到处插 cudaDeviceSynchronize。"
+  },
+
+  /* ===================== 第 1 章 ===================== */
+  {
+    id: "ch01-q1", chapter: "ch01", type: "single", difficulty: "⭐",
+    question: "启动配置为 <code>&lt;&lt;&lt;dim3(64,64), dim3(16,16)&gt;&gt;&gt;</code>，本次 kernel 一共启动了多少个线程？",
+    options: ["64 × 16 = 1024", "64×64 + 16×16 = 4352", "64×64×16×16 = 1,048,576", "64×64×16 = 65,536"],
+    answer: 2,
+    explanation: "总线程数 = gridDim.x×gridDim.y × blockDim.x×blockDim.y = 64×64×16×16 = 1,048,576。grid 决定块数，block 决定每块线程数，相乘才是总线程数。"
+  },
+  {
+    id: "ch01-q2", chapter: "ch01", type: "single", difficulty: "⭐⭐",
+    question: "一维索引的标准全局编号公式是？",
+    options: [
+      "<code>threadIdx.x * blockDim.x + blockIdx.x</code>",
+      "<code>blockIdx.x * blockDim.x + threadIdx.x</code>",
+      "<code>blockDim.x * gridDim.x + threadIdx.x</code>",
+      "<code>blockIdx.x + threadIdx.x * blockDim.x</code>"
+    ],
+    answer: 1,
+    explanation: "标准公式：i = blockIdx.x * blockDim.x + threadIdx.x。含义是“我前面的所有块都排满了人，再加上我在本部门的序号”，保证全局编号 0~N-1 一一映射（双射）。"
+  },
+  {
+    id: "ch01-q3", chapter: "ch01", type: "multi", difficulty: "⭐",
+    question: "关于四个内建变量，下列哪些对块内所有线程的取值都相同（不会造成 warp 内部分歧）？",
+    options: ["<code>gridDim</code>", "<code>blockDim</code>", "<code>blockIdx</code>", "<code>threadIdx</code>"],
+    answer: [0, 1],
+    explanation: "gridDim、blockDim 是“规模”，块内所有线程相同，可安全做循环上界/边界判断；blockIdx、threadIdx 是“位置”，每个线程不同，用它做 if 判断可能造成 warp 发散。"
+  },
+  {
+    id: "ch01-q4", chapter: "ch01", type: "judge", difficulty: "⭐⭐",
+    question: "在 CUDA 的二维线程索引中，<code>.x</code> 方向对应 C 数组的“列”（变化最快），<code>.y</code> 方向对应“行”（变化慢）。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "CUDA 二维索引与 C 数组行主序一致：最右的下标变化最快。因此 x（最右）→ 列；y → 行。这与数学 (row, col) 直觉相反，是初学者最易写错的地方。"
+  },
+  {
+    id: "ch01-q5", chapter: "ch01", type: "judge", difficulty: "⭐⭐",
+    question: "一个 warp 由 32 个连续编号的线程组成，因此 block 的线程数应取 32 的倍数，以避免半个 warp 被浪费。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "warp 是 32 个连续线程的硬件调度单位。块大小取 32 的倍数时，最后一个 warp 恰好填满；若取 33，则仍需 2 个 warp，第 2 个 warp 只装 1 个线程却占用整份调度资源。"
+  },
+  {
+    id: "ch01-q6", chapter: "ch01", type: "fill", difficulty: "⭐⭐⭐",
+    question: "补全 Grid-Stride Loop 的起始位置与步长（标准写法）：<br><code>int i = _______________;<br>int stride = _______________;<br>for (; i &lt; n; i += stride) { out[i] = in[i] + 1.0f; }</code>",
+    accepts: [
+      "blockidx.x*blockdim.x+threadidx.x|blockdim.x*griddim.x",
+      "blockidx.x * blockdim.x + threadidx.x|blockdim.x * griddim.x"
+    ],
+    explanation: "起始位置 i = blockIdx.x * blockDim.x + threadIdx.x；步长 stride = blockDim.x * gridDim.x（整个网格一次能覆盖的元素数）。循环条件 i<n 天然完成越界保护。"
+  },
+  {
+    id: "ch01-q7", chapter: "ch01", type: "fill", difficulty: "⭐⭐",
+    question: "向上取整除法（用整数实现 <code>ceil(n / B)</code>）的惯用写法是：<br><code>int gridSize = (________) / B;</code>",
+    accepts: ["n+b-1", "n + b - 1"],
+    explanation: "写成 (n + B - 1) / B。整数除法向下取整，先加上 B-1 把它“顶上去”即可实现向上取整。例如 n=1000,B=256 → 1255/256=4。"
+  },
+  {
+    id: "ch01-q8", chapter: "ch01", type: "single", difficulty: "⭐⭐",
+    question: "处理 n=1000 个元素、块大小 256。开了多少线程？浪费率大约多少？",
+    options: [
+      "1024 线程，浪费约 2.4%",
+      "1000 线程，浪费 0%",
+      "512 线程，浪费 50%",
+      "2048 线程，浪费约 51%"
+    ],
+    answer: 0,
+    explanation: "gridSize = (1000+255)/256 = 4 块 × 256 = 1024 线程，只多 24 个空座位，浪费 24/1024 ≈ 2.4%。硬件按 warp 调度，浪费极小。极端浪费出现在 n 刚比整数倍多一点点（如 n=257 → 开 512 线程，浪费 50%）。"
+  },
+  {
+    id: "ch01-q9", chapter: "ch01", type: "judge", difficulty: "⭐⭐⭐",
+    question: "二维块里 warp 是沿 x 方向切的（threadIdx.x 连续构成一个 warp），所以 x 方向必须是 32 的倍数，y 方向取多少都行。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "warp 按 x 方向连续 32 个线程切分。x 是“内存连续”的方向（对应数组最后一维），必须凑够 32 才合并；y 不在切分方向上，取值随意（常见 4/8/16）。"
+  },
+  {
+    id: "ch01-q10", chapter: "ch01", type: "single", difficulty: "⭐⭐⭐",
+    question: "下列代码中，哪个最可能造成严重的 warp 分支发散？",
+    options: [
+      "<code>if (i &lt; n) return;</code>",
+      "<code>if (threadIdx.x % 2 == 0) a=a*b; else a=c+d;</code>",
+      "<code>if (blockIdx.x &gt; 10) foo();</code>",
+      "<code>int x = a + b;</code>"
+    ],
+    answer: 1,
+    explanation: "threadIdx.x % 2 == 0 在一个 warp 内一半走 if、一半走 else，两个分支都得串行执行，时间翻倍。i<n 越界保护只影响边界那个 warp，几乎零代价；依赖 blockIdx 的分支整块统一走，不发散。"
+  },
+  {
+    id: "ch01-q11", chapter: "ch01", type: "short", difficulty: "⭐⭐⭐",
+    question: "什么是 Grid-Stride Loop？为什么它比“一个线程处理一个元素”更稳？",
+    explanation: "Grid-Stride Loop 让每个线程从自己的全局编号出发、按“整个网格的线程总数”为步长向后轮转处理数据。优势：① 把线程数与数据量解耦——无论 n 多大，网格规模都固定；② 循环条件 i<n 天然完成越界保护，少一个分支；③ 同一时刻所有线程访问连续地址，天然合并访存、时间局部性好；④ 网格大小成为可调的性能旋钮。"
+  },
+  {
+    id: "ch01-q12", chapter: "ch01", type: "single", difficulty: "⭐⭐",
+    question: "关于 <code>gridDim.y</code> 的硬件上限，下列说法正确的是？",
+    options: [
+      "gridDim.y 上限约 21 亿，和 gridDim.x 一样",
+      "gridDim.y 上限只有 65535，处理大矩阵时容易撞上",
+      "gridDim.y 最多 1024",
+      "gridDim 三个方向都上限 65535"
+    ],
+    answer: 1,
+    explanation: "gridDim.x 上限约 21 亿（基本用不完），但 gridDim.y/z 上限只有 65535。处理大矩阵时常把矩阵展平成一维，就是这个原因——避免 y 方向启动失败报 invalid configuration argument。"
+  },
+
+  /* ===================== 第 2 章 ===================== */
+  {
+    id: "ch02-q1", chapter: "ch02", type: "single", difficulty: "⭐⭐",
+    question: "合并访存的核心判断标准是？",
+    options: [
+      "线程编号小的线程，地址也必须小",
+      "同一个 warp 内，32 个线程访问的地址是否都挤在一段连续内存里（紧凑）",
+      "每个线程访问的地址必须是 32 的整数倍",
+      "必须按从大到小的顺序访问"
+    ],
+    answer: 1,
+    explanation: "合并看的是“warp 覆盖的地址区间紧不紧凑”，不是“线程号小的地址也小”。例：倒序访问 a[n-1-i]，32 个地址仍挤在同一箱里，照样合并；跳着访问 a[i*32] 则散在 32 个箱子里，利用率 12.5%。"
+  },
+  {
+    id: "ch02-q2", chapter: "ch02", type: "judge", difficulty: "⭐⭐",
+    question: "全局内存“延迟大但带宽大”：单次访问要等几百周期，但如果很多线程同时访问连续地址，硬件吞吐量极高。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "这正是 GPU 优化的来源——用海量并发线程把单次高延迟藏起来（切换到别的 warp），同时用合并访存把带宽用满。这两件事是本章两条主线。"
+  },
+  {
+    id: "ch02-q3", chapter: "ch02", type: "single", difficulty: "⭐⭐⭐",
+    question: "朴素 GEMM（C[M][N]=A[M][K]·B[K][N]）中每线程读 A 的 K 个、B 的 K 个元素。M=N=K=512 时，每个 A 元素大约被读了多少次？",
+    options: ["1 次", "32 次", "512 次", "262144 次"],
+    answer: 2,
+    explanation: "A 的第 r 行被 C 第 r 行所有 N 个元素用到。M=N=512 时，每个 A 元素被 512 个线程读、每个 B 元素也被 512 个线程读——这就是分块要解决的“同一份数据被反复读 512 遍”。"
+  },
+  {
+    id: "ch02-q4", chapter: "ch02", type: "multi", difficulty: "⭐⭐",
+    question: "关于共享内存，下列说法正确的有哪些？",
+    options: [
+      "作用域是一个线程块，块外的线程看不到",
+      "生命周期从块启动到块结束",
+      "一个线程写了，别的线程不用同步也能立刻安全读到",
+      "读写需要用 __syncthreads() 保证可见性"
+    ],
+    answer: [0, 1, 3],
+    explanation: "共享内存是块内公共白板，作用域/生命周期都是块级别；但它没有自动顺序保证，必须 __syncthreads() 才能保证“口令之前的所有写对所有人可见”。C 错在漏了同步。"
+  },
+  {
+    id: "ch02-q5", chapter: "ch02", type: "single", difficulty: "⭐⭐⭐",
+    question: "下列代码中哪一个会死锁（barrier 写进只有部分线程能到达的分支）？",
+    options: [
+      "<code>if (tid &lt; 16) { s[tid]=f(tid); __syncthreads(); }</code>",
+      "<code>for(int s=blockDim.x/2;s&gt;0;s&gt;&gt;=1){ if(tid&lt;s) s[tid]+=s[tid+s]; __syncthreads(); }</code>",
+      "<code>__syncthreads(); float v=s[tid];</code>",
+      "<code>int v = s[tid];</code>"
+    ],
+    answer: 0,
+    explanation: "只有 tid<16 的线程到达屏障，其余 240 个永远等不到，死锁。正确写法要让“屏障这一行”落在所有线程必经的路上——下面那个例子里 s 对所有线程相同，屏障在 if 外，所以安全。"
+  },
+  {
+    id: "ch02-q6", chapter: "ch02", type: "judge", difficulty: "⭐⭐",
+    question: "Bank Conflict 指的是：同一个 warp 内多个线程同时访问共享内存同一 bank 的不同地址，硬件必须串行化这些访问。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "共享内存被分成若干 bank，同一时刻多个线程访问同一 bank 的不同地址会发生冲突（串行化）；访问同一地址（广播）不冲突。加 padding（如 tile[32][33]）常能消除冲突。"
+  },
+  {
+    id: "ch02-q7", chapter: "ch02", type: "fill", difficulty: "⭐⭐⭐",
+    question: "合并访存里，一个 warp 跨步 32 个 float 访问（<code>a[i*32]</code>），会触达 32 个不同 sector，每个 sector（32 字节）只用 4 字节，带宽利用率约为 ____%。",
+    accepts: ["12.5", "12.5%", "12.5percent"],
+    explanation: "现代 GPU 以 32 字节 sector 为最小单位。跳着取时 32 个 sector 各只用到 4 字节 → 利用率 4/32 = 12.5%，比连续访问（100%）差一个数量级。"
+  },
+  {
+    id: "ch02-q8", chapter: "ch02", type: "single", difficulty: "⭐⭐",
+    question: "AoS（Array of Structs）与 SoA（Struct of Arrays）相比，在 GPU 上通常推荐？",
+    options: [
+      "总是 AoS，因为一次事务能拿到全部字段",
+      "总是 SoA，因为相邻分量地址连续、合并访存利用率高",
+      "两者带宽利用率一样",
+      "取决于访问模式：总是同时访问 x/y/z 时 AoS，只取一两个分量时 SoA 更优"
+    ],
+    answer: 3,
+    explanation: "没有绝对。若总是同时访问 x/y/z，AoS 一次事务拿全（虽浪费但省三次访问）；若大部分只访问其中一两个分量，SoA（x[t] 地址差 4 字节）利用率 100%。GPU 常规选择是 SoA。"
+  },
+  {
+    id: "ch02-q9", chapter: "ch02", type: "single", difficulty: "⭐⭐⭐",
+    question: "统一内存（<code>cudaMallocManaged</code>）的性能陷阱主要来自？",
+    options: [
+      "它分配的内存永远比显式 cudaMalloc 慢一倍",
+      "“按需、逐页”迁移可能导致 CPU 与 GPU 抢同一页来回搬（抖动/thrashing）",
+      "它不支持多 GPU",
+      "它不能配合 cudaMemcpy"
+    ],
+    answer: 1,
+    explanation: "统一内存按页在主机与显存间迁移，“裸用”时 CPU 和 GPU 抢同一页会来回搬，比老老实实搬一次还慢（抖动）。解法是用 cudaMemPrefetchAsync 提前整箱预取，或干脆显式拷贝。"
+  },
+  {
+    id: "ch02-q10", chapter: "ch02", type: "judge", difficulty: "⭐⭐",
+    question: "页锁定内存（<code>cudaMallocHost</code>）钉在物理内存里，DMA 引擎可直接装车，因此异步拷贝 <code>cudaMemcpyAsync</code> 才能生效；但分配太多会拖慢整台机器。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "普通 malloc 内存可被换页，DMA 不敢直接拉，要先抄一份到临时缓冲（多一次搬运）。页锁定内存不可换出、DMA 直达，且是 cudaMemcpyAsync 生效前提。代价是占用真实物理内存，应只给真正频繁传输的块用。"
+  },
+  {
+    id: "ch02-q11", chapter: "ch02", type: "short", difficulty: "⭐⭐⭐",
+    question: "分块（Tiling）矩阵乘法相比朴素版，把每线程的全局读次数从 2K 降到多少？为什么能降这么多？",
+    explanation: "朴素版每线程 2K 次全局读（K 次 A + K 次 B）。分块版每线程约 2×(K/TILE) 次——因为把 A、B 的 32×32 小块各搬一次进共享内存（2048 个 float），然后被 32×32 个线程共享复用。用 TILE=32 即降低约 32 倍，算术强度从 0.25 提升到 8。"
+  },
+  {
+    id: "ch02-q12", chapter: "ch02", type: "single", difficulty: "⭐⭐⭐",
+    question: "为什么“合并访存”解决不了朴素 GEMM 的慢？",
+    options: [
+      "因为朴素 GEMM 的访存既不连续也不对齐",
+      "因为朴素 GEMM 的访存其实是合并的，病根是同一份数据被反复读了几百遍（重复率过高）",
+      "因为 GEMM 是计算受限的",
+      "因为共享内存不够大"
+    ],
+    answer: 1,
+    explanation: "B[k*N+col] 里 col 连续，朴素 GEMM 的访存本身是合并的，带宽利用率不差。它的病根是“A 的每个元素被 N 个线程各读一遍”的重复访问。合并访存解决“这一趟有没有浪费”，分块解决“要不要跑这么多趟”——两个不同层面。"
+  },
+
+  /* ===================== 第 3 章 ===================== */
+  {
+    id: "ch03-q1", chapter: "ch03", type: "single", difficulty: "⭐⭐",
+    question: "关于各级同步原语的适用范围，下列配对错误的是？",
+    options: [
+      "<code>__syncthreads()</code> → 一个 block 内",
+      "<code>__syncwarp()</code> → 一个 warp（32 线程）内",
+      "<code>cg::grid_group::sync()</code> → 整个 grid（网格级）",
+      "<code>__syncthreads()</code> → 跨 block 同步"
+    ],
+    answer: 3,
+    explanation: "__syncthreads() 只同步同一个 block 内的线程（不跨越 block）。跨 block 不能直接同步，要用 Cooperative Groups 的 grid.sync() 或多 kernel 拆分。"
+  },
+  {
+    id: "ch03-q2", chapter: "ch03", type: "judge", difficulty: "⭐⭐⭐",
+    question: "本章最重要一句话：“并行程序里没有‘同时’，只有‘先后关系’。同步原语的全部工作，就是把你需要的先后关系明确地表达出来。”",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "你写下的每句同步都在说“在这一点上，我要保证某些事已经发生了”。这是理解竞态、可见性、栅栏的总纲。"
+  },
+  {
+    id: "ch03-q3", chapter: "ch03", type: "multi", difficulty: "⭐⭐",
+    question: "下列哪些属于“寄存器级 / warp 级”的通信手段，代价极低？",
+    options: [
+      "<code>__shfl_sync</code> 系列（warp shuffle）",
+      "<code>__ballot_sync</code> / <code>__any_sync</code> / <code>__all_sync</code>（投票）",
+      "<code>__syncthreads()</code>",
+      "<code>__syncwarp()</code>"
+    ],
+    answer: [0, 1, 3],
+    explanation: "warp shuffle 与 vote 是寄存器级、warp 内通信，代价极低；__syncwarp() 是 warp 级同步，代价也极低。__syncthreads() 是 block 级、要等最慢的 warp，代价更高。"
+  },
+  {
+    id: "ch03-q4", chapter: "ch03", type: "single", difficulty: "⭐⭐⭐",
+    question: "直方图实战中，把“全局 atomicAdd”改成“每块私有 shared 直方图”的主要目的是？",
+    options: [
+      "让代码更短",
+      "把全局原子操作次数降几个数量级（块内先各自累加，再合并到全局）",
+      "避免使用共享内存",
+      "提高数值精度"
+    ],
+    answer: 1,
+    explanation: "全局 atomicAdd 在几千线程抢同一个计数器时争用严重。每块先在自己 shared 直方图里无锁累加，再一次性合并到全局，全局原子次数从 O(像素数) 降到 O(块数×桶数)，性能可提升数十倍。"
+  },
+  {
+    id: "ch03-q5", chapter: "ch03", type: "judge", difficulty: "⭐⭐",
+    question: "<code>__threadfence()</code> 同时是编译器屏障和内存屏障，能保证全局内存的写在它之后对所有线程可见。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "内存栅栏保证“栅栏之前的写”在栅栏之后可见（有 _block / _system 等范围变体）。注意 __syncthreads() 只保证共享内存可见、不保证全局内存可见——那是 __threadfence 的活。"
+  },
+  {
+    id: "ch03-q6", chapter: "ch03", type: "single", difficulty: "⭐⭐⭐",
+    question: "关于原子操作，下列说法正确的是？",
+    options: [
+      "atomicAdd 永远很快，应该尽量多用",
+      "原子操作在争用时开销很高，应通过块内私有副本等手段减少争用",
+      "atomicAdd 只能用于 int，不能用于 float/double",
+      "用了 atomicAdd 就没有竞态了，不需要任何同步"
+    ],
+    answer: 1,
+    explanation: "原子操作保证“读-改-写”整体原子，但争用时串行化、开销高。float 可用 atomicAdd（CC≥2.0），double 需用 atomicCAS 模拟；它不是免费的，应减少争用而非滥用。"
+  },
+  {
+    id: "ch03-q7", chapter: "ch03", type: "fill", difficulty: "⭐⭐⭐",
+    question: "把一段数据从主机异步拷到设备、以便与计算重叠，要用 API <code>____</code>（需配合页锁定内存才能真正异步）。",
+    accepts: ["cudamemcpyasync", "cudaMemcpyAsync"],
+    explanation: "cudaMemcpyAsync 是异步拷贝。与计算重叠的前提是源/目的用页锁定内存（cudaMallocHost），否则仍需隐式同步、拿不到重叠收益。"
+  },
+  {
+    id: "ch03-q8", chapter: "ch03", type: "single", difficulty: "⭐⭐⭐",
+    question: "CUDA Graphs 主要省掉的是哪部分开销？",
+    options: [
+      "每个 kernel 的计算时间",
+      "kernel 启动（launch）开销——把一串启动“录下来”反复重放",
+      "全局内存的访问延迟",
+      "编译时间"
+    ],
+    answer: 1,
+    explanation: "Graphs 通过“捕获→实例化→重放”压缩一串 kernel 启动，省的是启动开销而非计算时间。当一段管线有几十个只跑几微秒的 kernel 时，启动开销比计算还长，收益明显。"
+  },
+  {
+    id: "ch03-q9", chapter: "ch03", type: "multi", difficulty: "⭐⭐",
+    question: "关于“块间不能直接同步”，下列理解正确的有哪些？",
+    options: [
+      "硬件不保证 block 之间的执行顺序",
+      "因此“等别的 block 算完”这种代码是错误的",
+      "绕过的办法是 Cooperative Groups 的 grid.sync()（有硬约束）或拆成多个 kernel",
+      "可以用一个全局 flag + 轮询让 block 互相等待"
+    ],
+    answer: [0, 1, 2],
+    explanation: "不同 block 的执行顺序完全不确定，不能假设谁先完成，所以块间直接同步是错的；可用 CG 的 grid.sync()（要求协作启动、所有 block 同时在场）或多 kernel 拆分解决。D 的全局 flag 轮询在 CUDA 里不可靠且低效。"
+  },
+  {
+    id: "ch03-q10", chapter: "ch03", type: "judge", difficulty: "⭐⭐⭐",
+    question: "Warp Shuffle 可以直接在寄存器之间传递数据，省掉一次共享内存往返和若干次 __syncthreads()，因此 warp 内归约可以写得很短。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "正是 shuffle 的价值：warp 内线程把手里的值“递给隔壁”，无需经过共享内存，也无需块级屏障（只用 __syncwarp 就行），归约/前缀和/广播能写成寄存器级几行代码。"
+  },
+  {
+    id: "ch03-q11", chapter: "ch03", type: "short", difficulty: "⭐⭐⭐",
+    question: "为什么把“全局 atomicAdd 直方图”改成“每块私有 shared 直方图 + 最后合并”能大幅提升性能？",
+    explanation: "全局 atomicAdd 时成千上万线程抢同一组桶计数器，硬件必须串行化每次读-改-写，争用成为瓶颈。改为每块先在各自的 shared 直方图里无锁累加（块内不冲突），块结束时才用很少几次原子操作把局部直方图合并进全局——全局原子次数从 O(元素数) 降到 O(块数×桶数)，争用大幅下降，性能常提升数十倍。"
+  },
+  {
+    id: "ch03-q12", chapter: "ch03", type: "fill", difficulty: "⭐⭐",
+    question: "warp 内投票：“所有活跃线程都满足”用 <code>____sync(mask, pred)</code>，“存在任一满足”用 <code>____sync(mask, pred)</code>，“返回满足谓词的位掩码”用 <code>____sync(mask, pred)</code>。",
+    accepts: ["__all|__any|__ballot", "__all_sync|__any_sync|__ballot_sync"],
+    explanation: "三者都是 warp 级投票原语且都带 mask 参数：__all_sync 全满足为真；__any_sync 任一满足为真；__ballot_sync 返回 32 位掩码，常用于流压缩。"
+  },
+
+  /* ===================== 第 4 章 ===================== */
+  {
+    id: "ch04-q1", chapter: "ch04", type: "single", difficulty: "⭐⭐",
+    question: "本章最重要的一句话是？",
+    options: [
+      "优化就是想到一个技巧就试",
+      "优化不是“想到一个技巧就试”，而是“测量 → 假设 → 改动 → 再测量”的闭环",
+      "能编译通过就是优化成功",
+      "只要开了 --use_fast_math 就变快"
+    ],
+    answer: 1,
+    explanation: "五步闭环：正确 → 基线 → profile → 只改最热那一点 → 回归验证。没有测量体系，小 A 改了三个月只快了 3 毫秒。优化是把瓶颈从 A 挪到 B，不知道瓶颈在哪就是在赌博。"
+  },
+  {
+    id: "ch04-q2", chapter: "ch04", type: "judge", difficulty: "⭐⭐",
+    question: "有效带宽（GB/s）= 搬运的总字节数 / 耗时，是衡量访存效率的正确指标；算术强度 = FLOP / Byte，用于判断 kernel 是带宽受限还是计算受限。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "三个核心指标是有效带宽、算力（GFLOPS）、算术强度。Roofline 模型用“算术强度 × 机器带宽/算力峰值”一眼判型：拐点左边是带宽受限，右边是计算受限。"
+  },
+  {
+    id: "ch04-q3", chapter: "ch04", type: "single", difficulty: "⭐⭐⭐",
+    question: "用 Roofline 模型判断时，若一个 kernel 的算术强度低于机器拐点（峰值算力/峰值带宽），说明它？",
+    options: [
+      "计算受限",
+      "带宽受限（访存受限）",
+      "已经最优",
+      "肯定是代码写错了"
+    ],
+    answer: 1,
+    explanation: "Roofline 横轴是算术强度、纵轴是可达算力，呈“平顶+斜坡”。强度低于拐点时卡在带宽斜坡上→访存受限，优化方向是减少/合并访存、提高数据复用；高于拐点才到算力平顶→计算受限。"
+  },
+  {
+    id: "ch04-q4", chapter: "ch04", type: "multi", difficulty: "⭐⭐",
+    question: "关于编译选项，下列说法正确的有哪些？",
+    options: [
+      "<code>-O3</code> 对 GPU 程序性能影响非常大，发布默认应给 Release",
+      "<code>--use_fast_math</code> 用更快但不严格符合 IEEE 的指令，可能改变数值结果",
+      "<code>-G</code>（保留调试信息）通常让程序变慢，不应出现在性能测量版本里",
+      "<code>-Xptxas -v</code> 可以打印寄存器/共享内存占用，用于分析占用率"
+    ],
+    answer: [0, 1, 2, 3],
+    explanation: "四项都正确。-O3 影响大；--use_fast_math 用近似指令换速度、可能改变结果；-G 带调试符号且禁用很多优化，性能测量时别加；-Xptxas -v 输出寄存器/共享内存占用，是占用率分析利器。"
+  },
+  {
+    id: "ch04-q5", chapter: "ch04", type: "single", difficulty: "⭐⭐⭐",
+    question: "<code>ncu</code> 与 <code>nsys</code> 的区别是？",
+    options: [
+      "两者完全一样，只是名字不同",
+      "ncu 是逐 kernel 的“显微镜”（看指标），nsys 是系统级“时间线”（看 kernel 间空隙、拷贝与计算能否重叠）",
+      "ncu 看时间线，nsys 看单 kernel 指标",
+      "ncu 只用于调试，nsys 只用于编译"
+    ],
+    answer: 1,
+    explanation: "ncu（Nsight Compute）逐 kernel 深入分析：SOL%、Achieved Occupancy、Warp Stall Reasons、L1/L2 命中率等。nsys（Nsight Systems）看整个系统的时序：kernel 之间有没有空隙、H2D/D2H 拷贝与计算是否重叠、CPU 是否为瓶颈。"
+  },
+  {
+    id: "ch04-q6", chapter: "ch04", type: "judge", difficulty: "⭐⭐",
+    question: "<code>compute-sanitizer</code> 的作用是在优化之后给正确性“上保险”——它能查出内存越界、竞态等 bug。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "优化最容易把正确性搞坏（尤其是改访存、加流水线时）。compute-sanitizer（旧名 cuda-memcheck）能检测越界访问、共享内存误用、竞态等，是优化前后必跑的保命工具。"
+  },
+  {
+    id: "ch04-q7", chapter: "ch04", type: "fill", difficulty: "⭐⭐⭐",
+    question: "优化五步闭环：① 正确 → ② ____（建立可复现的基准）→ ③ profile（找最热的点）→ ④ 只改最热那一点 → ⑤ ____（确认确实变快且仍正确）。",
+    accepts: ["基线|回归验证", "baseline|回归", "建立基线|回归验证"],
+    explanation: "闭环：先保证正确，再建立基线（一个已知答案的基准，如“纯拷贝能达到多少带宽”），然后 profile 定位热点，只改最热一点，最后回归验证（跑 compute-sanitizer 确认还对、确认真变快）。"
+  },
+  {
+    id: "ch04-q8", chapter: "ch04", type: "single", difficulty: "⭐⭐",
+    question: "为什么“只测一次 kernel 耗时”是不可接受的？",
+    options: [
+      "因为 GPU 太快，一次测不到",
+      "因为首次运行可能含 JIT/上下文初始化，且机器抖动让单次结果没有统计意义；应预热 + 取中位数",
+      "因为 nvcc 不支持单次计时",
+      "因为必须用 nsys 而不能自己计时"
+    ],
+    answer: 1,
+    explanation: "单次测量会混入 JIT、上下文、调度抖动等噪声。正确做法是预热若干次后跑多轮、取中位数（cuda_timer.h 的 measure 就是这样做的），结论才可信。"
+  },
+  {
+    id: "ch04-q9", chapter: "ch04", type: "multi", difficulty: "⭐⭐⭐",
+    question: "ncu 里下列哪些指标能帮你判断瓶颈？",
+    options: [
+      "SOL（Speed of Light）百分比",
+      "Achieved Occupancy（实际占用率）",
+      "Warp Stall Reasons（warp 停顿原因）",
+      "L1/L2 命中率、sectors per request"
+    ],
+    answer: [0, 1, 2, 3],
+    explanation: "SOL 看离峰值多远；Occupancy 看 SM 上有没有足够 warp 藏延迟；Warp Stall Reasons 定位为什么 stall（长延迟访存、Barrier、Math pipe 等）；L1/L2 命中率与 sectors/request 反映访存效率。"
+  },
+  {
+    id: "ch04-q10", chapter: "ch04", type: "judge", difficulty: "⭐⭐⭐",
+    question: "看 PTX/SASS 的目的，是确认编译器真的生成了你想要的指令（如 FMA、向量化加载 float4），而不是凭“我觉得”。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "编译器未必按你想的做（可能被拆成多条、没合并乘加、没向量化）。用 cuobjdump / nvdisasm 看 SASS，是“用数据说话”的一环，能解释为什么某次“优化”反而更慢。"
+  },
+  {
+    id: "ch04-q11", chapter: "ch04", type: "short", difficulty: "⭐⭐⭐",
+    question: "用一句话说明 Roofline 模型能告诉你什么，并给出“带宽受限”时的两个优化方向。",
+    explanation: "Roofline 用“算术强度（FLOP/Byte）”对“可达算力”画图，一眼判型：在拐点左侧→带宽受限，右侧→计算受限。带宽受限时优化方向：① 减少/合并全局访存（让相邻线程访问相邻地址）；② 提高数据复用（共享内存分块、寄存器缓存、避免同一数据反复读）。"
+  },
+  {
+    id: "ch04-q12", chapter: "ch04", type: "fill", difficulty: "⭐⭐",
+    question: "用 cudaEvent 计时：先 <code>cudaEventRecord(start,0)</code>，kernel 后 <code>cudaEventRecord(stop,0)</code>，再 <code>cudaEvent____(stop)</code> 等待事件发生，最后用 <code>cudaEventElapsedTime</code> 取毫秒差。",
+    accepts: ["synchronize", "cudaEventSynchronize"],
+    explanation: "必须等 stop 事件真的发生才能算时间差：cudaEventSynchronize(stop) 后再 cudaEventElapsedTime(&ms, start, stop)。用 cudaEvent 而非 host 端 clock()，因为 kernel 异步、host 计时会把启动开销算进去甚至测到 0。"
+  },
+
+  /* ===================== 第 5 章 ===================== */
+  {
+    id: "ch05-q1", chapter: "ch05", type: "single", difficulty: "⭐⭐",
+    question: "本章最重要的一句话：“并行算法不是把串行算法翻译成 CUDA，而是换一种计算顺序。”下列哪一个体现了这一点？",
+    options: [
+      "归约的树形求和、扫描的 up-sweep/down-sweep",
+      "把 for 循环原样展开",
+      "每个线程顺序处理一个数组",
+      "用 printf 调试"
+    ],
+    answer: 0,
+    explanation: "归约的树形求和、扫描的二叉树都是串行世界里不存在的形状；并行算法的核心往往是“换计算顺序”，而非逐行翻译串行代码。"
+  },
+  {
+    id: "ch05-q2", chapter: "ch05", type: "judge", difficulty: "⭐⭐",
+    question: "Map（每个输出只依赖一个对应输入）的瓶颈通常是带宽，首要优化是合并访存与向量化（如 float4）。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "Map 输出依赖单一输入，瓶颈在把数据搬进来，所以合并访存 + 向量化加载是主优化。Reduce/Scan 还额外受同步限制，Scatter/Gather 受原子/随机访存限制。"
+  },
+  {
+    id: "ch05-q3", chapter: "ch05", type: "single", difficulty: "⭐⭐⭐",
+    question: "前缀和（Scan / Prefix Sum）属于哪类模式？输出规模是？",
+    options: [
+      "Reduce，输出是 1 个值",
+      "Scan，输出与输入同规模（每个输出依赖前面所有输入）",
+      "Map，输出与输入同规模但只依赖自己",
+      "Scatter，输出规模由数据决定"
+    ],
+    answer: 1,
+    explanation: "Scan 每个输出依赖前面所有输入，输出与输入同规模（前缀和、压缩、排序基石）。常用 work-efficient 的 Blelloch up-sweep/down-sweep 二叉树，并用“分块扫描 + 扫描块和 + 加回偏移”三阶段支持任意长度。"
+  },
+  {
+    id: "ch05-q4", chapter: "ch05", type: "multi", difficulty: "⭐⭐⭐",
+    question: "关于 Stencil（模板/邻域计算，如 Jacobi 迭代、卷积），下列说法正确的有哪些？",
+    options: [
+      "每个输出依赖输入的一个邻域（固定一小片）",
+      "瓶颈是邻近元素被重复读，带宽压力大",
+      "常用共享内存 tiling + halo（含四个角）把全局访存降到约 1 次/点",
+      "它是 Reduce 的特例"
+    ],
+    answer: [0, 1, 2],
+    explanation: "Stencil 输出依赖邻域、邻近元素被反复读导致带宽受限；用共享内存分块并正确处理 halo（含四角）可将每点全局访存降到约 1 次。D 错：它是独立模式，不是 Reduce 特例。"
+  },
+  {
+    id: "ch05-q5", chapter: "ch05", type: "single", difficulty: "⭐⭐⭐",
+    question: "双调排序（Bitonic Sort）中，比较器方向由公式 <code>(i &amp; k) == 0</code> 决定。这个公式决定的是？",
+    options: [
+      "每个线程块负责多大一块",
+      "第 i 个元素在这一阶段应做升序还是降序比较",
+      "向量化加载的宽度",
+      "是否使用共享内存"
+    ],
+    answer: 1,
+    explanation: "双调排序依靠“网络规整化 + 按位稳定划分”，比较方向完全由 (i & k) == 0 这种位公式决定。掌握这个方向判断公式就能写出完整双调排序。"
+  },
+  {
+    id: "ch05-q6", chapter: "ch05", type: "judge", difficulty: "⭐⭐⭐",
+    question: "SpMV（稀疏矩阵×向量）通常是带宽受限，因为它大量依赖间接寻址（Gather：<code>x[colIdx[j]]</code>）且每个输出只依赖稀疏的几列。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "SpMV 瓶颈在带宽与随机访存，CSR/ELL 格式选择、行内并行（每线程一行或每 warp 一行）都是为了缓解；但它本质仍带宽受限。"
+  },
+  {
+    id: "ch05-q7", chapter: "ch05", type: "fill", difficulty: "⭐⭐⭐",
+    question: "层次化 BFS 中，通常用 ____（原子 CAS）做“抢占式标记”，保证每个顶点只进 frontier 一次。",
+    accepts: ["atomiccas", "atomicCAS"],
+    explanation: "BFS 用 atomicCAS 做抢占式标记：只有第一个成功把顶点状态从“未访问”改成“已入队”的线程才把它加入下一层 frontier，从而保证每个顶点只进一次——图算法里避免重复处理的常用手法。"
+  },
+  {
+    id: "ch05-q8", chapter: "ch05", type: "single", difficulty: "⭐⭐⭐",
+    question: "浮点大规模求和（如 1e8 个 float 相加）最容易出现的问题是？",
+    options: [
+      "整数溢出",
+      "大数吃小数（精度灾难）：后面的小数被前面的大和“淹没”",
+      "编译器不生成 FMA",
+      "共享内存 bank conflict"
+    ],
+    answer: 1,
+    explanation: "顺序累加时，若先加了很多大数再加小数，小数相对误差被放大（大数吃小数）。解法：分块求和、Kahan 补偿求和，或上 double。numeric.cu 做了这些对比。"
+  },
+  {
+    id: "ch05-q9", chapter: "ch05", type: "multi", difficulty: "⭐⭐",
+    question: "拿到一个新问题，教程建议先问哪三个问题来“归类”？",
+    options: [
+      "输出的一个元素，依赖输入的几个元素？",
+      "写出去时，多个线程会不会写同一个位置？",
+      "读的时候，相邻线程读的是不是相邻地址？",
+      "这个 kernel 应该叫什么名字？"
+    ],
+    answer: [0, 1, 2],
+    explanation: "① 依赖 1 个→Map；固定邻域→Stencil；全部→Reduce/Scan；由数据决定→Gather/Scatter。② 多写同位置→需原子/私有副本/先排序。③ 相邻线程是否读相邻地址→否则性能已被判“死刑”，先改布局。"
+  },
+  {
+    id: "ch05-q10", chapter: "ch05", type: "judge", difficulty: "⭐⭐⭐",
+    question: "归约从“交错寻址”演进到“warp shuffle”，每一步变快的原因都能用有效带宽数据证明；warp 内归约可以完全不经过共享内存。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "归约四步演进（交错寻址→顺序寻址→共享内存树→warp shuffle）每步都用带宽数据证明收益；warp shuffle 直接寄存器通信，warp 内可省掉共享内存往返与若干 __syncthreads()。"
+  },
+  {
+    id: "ch05-q11", chapter: "ch05", type: "short", difficulty: "⭐⭐⭐",
+    question: "为什么教程说“GPU 编程的绝大部分工作不是想出新算法，而是把一个已知算法映射成规则的内存访问”？",
+    explanation: "因为问题数学定义早已写好（求和、扫描、排序、SpMV、图遍历），真正的难点是“哪个线程处理哪个数据、数据放哪一级内存”。并行模式总览表（Map/Reduce/Scan/Scatter/Gather/Stencil/Sort/SpMV/图）就是第一把尺子：先归类，再决定线程映射与访存布局。花时间的永远是访存模式而非公式。"
+  },
+  {
+    id: "ch05-q12", chapter: "ch05", type: "fill", difficulty: "⭐⭐",
+    question: "work-efficient 前缀和的三阶段结构：① 分块扫描 → ② 扫描____ → ③ 把块和____回每个元素。",
+    accepts: ["块和|加回偏移", "blocksum|addback"],
+    explanation: "work-efficient 扫描用“分块扫描 + 扫描块和 + 加回偏移”三阶段，使任意长度输入都能在设备端高效完成前缀和。"
+  },
+
+  /* ===================== 第 6 章 ===================== */
+  {
+    id: "ch06-q1", chapter: "ch06", type: "single", difficulty: "⭐⭐",
+    question: "下列特性与其最低 Compute Capability 的配对，错误的是？",
+    options: [
+      "动态并行（设备端 <<<>>>）≥ 3.5",
+      "WMMA（FP16）≥ 7.0（Volta）",
+      "cp.async ≥ 8.0（Ampere）",
+      "WMMA（TF32/BF16/FP64）≥ 7.0"
+    ],
+    answer: 3,
+    explanation: "WMMA 的 TF32/BF16/FP64 需要 CC ≥ 8.0（Ampere）；FP16 是 ≥7.0，INT8 ≥7.2，FP8 ≥8.9/9.0。其余配对正确。动态并行在 CUDA 13 上还要求目标架构 < sm_90。"
+  },
+  {
+    id: "ch06-q2", chapter: "ch06", type: "judge", difficulty: "⭐⭐⭐",
+    question: "线程块集群（Thread Block Cluster）与分布式共享内存（DSM）在 Hopper（CC 9.0）及以上可用；它让相邻块直接交换数据，不再绕道全局内存。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "CC 9.0（Hopper）引入集群与 DSM，块与块能在集群内直接共享数据，省掉全局内存往返。旧卡不支持；需用 cudaLaunchKernelEx + Toolkit ≥ 11.8 才能启动集群核。"
+  },
+  {
+    id: "ch06-q3", chapter: "ch06", type: "single", difficulty: "⭐⭐⭐",
+    question: "关于 <code>cp.async</code>（Ampere 引入的异步拷贝），下列说法正确的是？",
+    options: [
+      "它需要目标架构 ≥ 8.0 才真正异步（需 #include &lt;cuda_pipeline.h&gt;），能搭多阶段软件流水线让加载与计算重叠",
+      "在低于 CC 8.0 的架构上，它完全无法通过编译",
+      "它只能用于 Hopper（CC 9.0）及以上的架构",
+      "它会自动把单个 kernel 拆成多个流并发执行"
+    ],
+    answer: 0,
+    explanation: "cp.async 是 Ampere（CC 8.0）引入的“异步把全局内存搬进共享内存”的指令，配合多阶段流水线让“加载下一块”与“计算当前块”重叠。低于 8.0 时它能编过、结果也对，但退化成同步 ld/st，拿不到加速（所以 B 错）；它是 Ampere 起、不是 Hopper 专属（C 错）；流与 kernel 拆分是另一回事（D 错）。"
+  },
+  {
+    id: "ch06-q4", chapter: "ch06", type: "multi", difficulty: "⭐⭐",
+    question: "本章强调“高级特性不是炫技，各自解决一个具体瓶颈”。下列配对正确的有哪些？",
+    options: [
+      "cp.async → 省掉寄存器/共享内存中转，搭异步流水线",
+      "线程块集群/DSM → 省掉块间全局内存往返",
+      "CUDA Graphs → 省掉 kernel 启动开销（而非计算时间）",
+      "动态并行 → 省掉所有全局内存访问"
+    ],
+    answer: [0, 1, 2],
+    explanation: "三个配对都正确。动态并行解决的是“递归/分治时 host 端无法展开一串固定 kernel 启动”的问题，并不省全局内存；它还有成本上限（设备端启动开销、需 -rdc=true）。"
+  },
+  {
+    id: "ch06-q5", chapter: "ch06", type: "single", difficulty: "⭐⭐⭐",
+    question: "写本章示例时，对“本机卡不支持某特性”的推荐处理方式是？",
+    options: [
+      "直接报错退出，让程序崩在 cudaErrorNotSupported",
+      "用 cudaGetDeviceProperties / cudaDeviceGetAttribute 判 CC，不支持就打印一句人话然后优雅 return 0",
+      "强行 -arch 编一个高架构，运行时再说",
+      "忽略，反正结果都对"
+    ],
+    answer: 1,
+    explanation: "教程统一套路：查 CC/属性 → 不支持就打印原因并优雅退出（return 0），而不是崩在 cudaErrorNotSupported 或静默出错。这样示例在任何卡上都能“跑得动或说得清为什么跳过”。"
+  },
+  {
+    id: "ch06-q6", chapter: "ch06", type: "judge", difficulty: "⭐⭐⭐",
+    question: "VMM（虚拟内存管理，cuMemCreate/cuMemMap）把“虚拟地址”和“物理显存”解耦，这正是大模型框架自己管显存时常用的能力；它要求 CC ≥ 6.0 且驱动 ≥ 440。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "VMM 让你先预留虚拟地址区间、再按需提交/映射物理显存，便于碎片管理；需 CU_DEVICE_ATTRIBUTE_VIRTUAL_ADDRESS_MANAGEMENT_SUPPORTED，链接 -lcuda。属性不支持时 cuMemCreate 返回 CUDA_ERROR_NOT_SUPPORTED。"
+  },
+  {
+    id: "ch06-q7", chapter: "ch06", type: "fill", difficulty: "⭐⭐⭐",
+    question: "多 GPU P2P：用 <code>cudaDeviceCanAccessPeer</code> 查能力，返回 ____ 表示不能直接 P2P（必须走主机中转）；开启 peer access 后可用 <code>cudaMemcpy____</code> 在两卡显存间直达。",
+    accepts: ["0|peer", "0|cudaMemcpyPeer"],
+    explanation: "cudaDeviceCanAccessPeer 返回 0 表示不支持直连（注意不是报错，需要主机中转）；返回非 0 时开启 peer access，之后用 cudaMemcpyPeer 在显存间直达。集合通信应交给 NCCL。"
+  },
+  {
+    id: "ch06-q8", chapter: "ch06", type: "single", difficulty: "⭐⭐⭐",
+    question: "关于 CUDA Graphs 的条件/循环节点，下列说法正确的是？",
+    options: [
+      "它在所有 CUDA 版本上都能用",
+      "它在 CUDA 12.3 引入，但 CUDA 13 已整体移除原 API，示例用版本宏裁掉、在 13 上只打印跳过",
+      "它能减少每个 kernel 的计算量",
+      "它只在单 GPU 上有效"
+    ],
+    answer: 1,
+    explanation: "条件/循环节点在 CUDA 12.3 引入，门槛主要是 Toolkit 版本；但 CUDA 13 把 cudaGraphAddConditionalNode 等整套接口移除了，示例用 #if CUDART_VERSION >= 12030 && < 13000 裁掉，在 13 上只打印“跳过”说明。它省的是启动开销不是计算量。"
+  },
+  {
+    id: "ch06-q9", chapter: "ch06", type: "multi", difficulty: "⭐⭐⭐",
+    question: "设备端启动 kernel（动态并行）需要注意哪些约束？",
+    options: [
+      "必须加编译参数 -rdc=true",
+      "CUDA 13 起目标架构必须低于 sm_90（如 -arch=sm_80）；Windows x64 还需 -DCUDA_FORCE_CDP1_IF_SUPPORTED",
+      "设备端 malloc 还看堆配额",
+      "它完全不需要任何特殊编译选项"
+    ],
+    answer: [0, 1, 2],
+    explanation: "动态并行约束：需 -rdc=true；CUDA 13 上目标架构须 < sm_90；Windows x64 要 -DCUDA_FORCE_CDP1_IF_SUPPORTED；设备端 malloc 受堆配额限制；不加 -rdc 编译直接报错，卡不支持则启动报 cudaErrorNotSupported。"
+  },
+  {
+    id: "ch06-q10", chapter: "ch06", type: "judge", difficulty: "⭐⭐⭐",
+    question: "WMMA（nvcuda::wmma）写 FP16 矩阵乘时，典型三步是 load_matrix_sync / mma_sync / store_matrix_sync，且通常是 FP16 输入 + FP32 累加。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "WMMA 三步：load_matrix_sync 装入 fragment、mma_sync 做矩阵乘累加、store_matrix_sync 写回；常见做法是 FP16 输入、FP32 累加（precision 在 fragment 模板参数里指定）。这也是追平 cuBLAS 的关键之一。"
+  },
+  {
+    id: "ch06-q11", chapter: "ch06", type: "short", difficulty: "⭐⭐⭐",
+    question: "本章说“高级特性不是更快的技巧，而是新的可能性”。请举 cp.async 与线程块集群两个例子，说明它们各省掉了什么开销。",
+    explanation: "cp.async（Ampere）：提供一条“异步把全局内存搬进共享内存”的指令，配合多阶段软件流水线（stage 数可选），让“加载下一块数据”与“计算当前块”重叠，省掉传统 double buffering 里先加载到寄存器再写入共享内存的中转与等待。线程块集群/DSM（Hopper）：让同一集群内的相邻块通过分布式共享内存直接交换数据，省掉原本必须绕道全局内存的往返，halo 数据无需再走显存。"
+  },
+  {
+    id: "ch06-q12", chapter: "ch06", type: "fill", difficulty: "⭐⭐",
+    question: "用统一内存进阶驯服“抖动”时，提前把数据整箱搬到目标设备用的是 <code>____Async</code>（CUDA 13 起第 3 参数变成 cudaMemLocation 并新增 flags）。",
+    accepts: ["cudamemprefetchasync", "cudaMemPrefetchAsync"],
+    explanation: "cudaMemPrefetchAsync 做提前预取：一次性大块传输的效率远高于缺页时一页一页搬。CUDA 13 起第 3 参数由设备 id 改为 cudaMemLocation，并多一个 flags 参数。"
+  },
+
+  /* ===================== 第 7 章 ===================== */
+  {
+    id: "ch07-q1", chapter: "ch07", type: "single", difficulty: "⭐⭐",
+    question: "本章最重要的一句话是？",
+    options: [
+      "所有算子都该自己手写 kernel",
+      "先判断“该不该自己写”，再决定“怎么写”。cuBLAS 能到峰值 70%~90%，手写 kernel 通常只有 15%~40%",
+      "Thrust 永远比手写慢，不要用",
+      "库调用不需要正确性验证"
+    ],
+    answer: 1,
+    explanation: "关键判断：除了学习目的，标准算子没理由自己写——厂商库是各自领域的最优实现。决策：标准算子→用库；通用 Map/Reduce/Scan/Sort→Thrust/CUB；都不沾→自己写。"
+  },
+  {
+    id: "ch07-q2", chapter: "ch07", type: "judge", difficulty: "⭐⭐⭐",
+    question: "cuBLAS 的矩阵乘法使用列主序（Fortran 风格），所以在 C/C++（行主序）里调用 cublasSgemm 时，常需要正确设置 transpose 与 lda/ldb/ldc，否则结果会“形状对但值错”。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "这是新手翻车最多的地方。cuBLAS 默认列主序，而 C/C++ 数组是行主序。行主序下算 C=A·B，等价于按列主序算 C^T = B^T·A^T，因此要正确设置 transa/transb 与前导维度，否则算的是另一个矩阵。"
+  },
+  {
+    id: "ch07-q3", chapter: "ch07", type: "multi", difficulty: "⭐⭐",
+    question: "关于“该自己写还是用库”的决策，下列正确的有哪些？",
+    options: [
+      "是线性代数/FFT/随机数/深度学习里的标准算子 → 用厂商库（cuBLAS/cuFFT/cuRAND/cuDNN）",
+      "是 Map/Reduce/Scan/Sort 这类通用并行模式 → 用 Thrust（整容器）/CUB（块/设备原语）",
+      "两者都不沾、需要极致的特定访存控制 → 自己写 kernel",
+      "任何情况都优先自己写，库不可靠"
+    ],
+    answer: [0, 1, 2],
+    explanation: "决策树：标准算子→厂商库；通用模式→Thrust/CUB；都不沾→自己写。D 错：库通常是该领域最优实现，自己写反而是最后选择。"
+  },
+  {
+    id: "ch07-q4", chapter: "ch07", type: "single", difficulty: "⭐⭐⭐",
+    question: "关于 CUB 与 Thrust 的定位，正确的是？",
+    options: [
+      "Thrust 适合整容器的高级算法（排序/归约），CUB 提供块级/设备级原语（DeviceReduce/DeviceScan/DeviceRadixSort）",
+      "Thrust 比手写快，CUB 比手写慢",
+      "CUB 只能用于 host 端",
+      "两者完全一样"
+    ],
+    answer: 0,
+    explanation: "Thrust 面向整容器、API 高层（三行排序/归约）；CUB 提供 DeviceReduce/DeviceScan/DeviceRadixSort 等块级/设备级原语，可直接替换自己写了一半的归约。"
+  },
+  {
+    id: "ch07-q5", chapter: "ch07", type: "judge", difficulty: "⭐⭐",
+    question: "cuRAND 有主机端（在 CPU 生成再拷过去）和设备端（在 kernel 内用 curand 状态生成）两种接口，后者适合大规模并行生成。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "主机端接口（curandGenerator）生成完再拷，适合小规模；设备端（curand_init + curand 系列）在每个线程里生成，适合需要海量随机数的蒙特卡洛场景。"
+  },
+  {
+    id: "ch07-q6", chapter: "ch07", type: "fill", difficulty: "⭐⭐⭐",
+    question: "用 cuFFT 做 FFT 时要注意归一化：正变换不除 N，逆变换（<code>cufftExec____</code>）也不自动带 1/N，需要你____，否则往返变换结果会差 N 倍。",
+    accepts: ["inverse|手动乘1/n", "cufftinverse|手动除以N", "inverse|自己补上1/n"],
+    explanation: "cuFFT 正变换默认不归一化、逆变换也不自动除以 N，所以 ifft(fft(x)) 会得到 N·x。需要自己在逆变换后乘 1/N（或在正向里预乘）才能得到恒等。"
+  },
+  {
+    id: "ch07-q7", chapter: "ch07", type: "single", difficulty: "⭐⭐⭐",
+    question: "工程化里要求“同一个工程在没 GPU 的机器上也能编译通过”。通常怎么实现？",
+    options: [
+      "把所有 .cu 都注释掉",
+      "用 CMake 把 CUDA 相关目标条件包裹（探测 CUDAToolkit），缺失时退回 CPU 路径或跳过",
+      "要求 CI 必须配 GPU",
+      "不可能做到"
+    ],
+    answer: 1,
+    explanation: "正确做法是让工程优雅降级：用 CMake 探测 CUDA 是否可用，可用则编 GPU 目标，缺失则用 CPU 回退实现或跳过相关 target，并保证 ctest 仍能编译运行。"
+  },
+  {
+    id: "ch07-q8", chapter: "ch07", type: "multi", difficulty: "⭐⭐",
+    question: "下列 Python 生态与 CUDA 衔接的方式，正确的有哪些？",
+    options: [
+      "CuPy：在 Python 里用类 NumPy 的 GPU 数组与自定义 kernel",
+      "Numba：用装饰器把 Python 函数 JIT 成 GPU kernel",
+      "PyTorch 扩展：用 C++/CUDA 写算子，前后向接进 autograd",
+      "Triton：用类 Python 的高层语言写 GPU kernel，由编译器生成高效 PTX"
+    ],
+    answer: [0, 1, 2, 3],
+    explanation: "四项都是教程提到的 Python 衔接方式：CuPy（NumPy 风格 + RawKernel）、Numba（@cuda.jit）、PyTorch 自定义 CUDA 扩展、Triton（高层 DSL）。它们让 CUDA 能力融入 Python 工作流。"
+  },
+  {
+    id: "ch07-q9", chapter: "ch07", type: "judge", difficulty: "⭐⭐⭐",
+    question: "给 CUDA 代码配单元测试时，应让一条命令跑完全部对拍、失败时返回非零退出码，这样 ctest 才能自动判断成败。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "工程化要求“正确性验证脚本”可一键运行；对拍失败时返回非零退出码，ctest 据此判定 FAIL。这也是第 8 章“可复现/可交付”的基础。"
+  },
+  {
+    id: "ch07-q10", chapter: "ch07", type: "short", difficulty: "⭐⭐⭐",
+    question: "简述 cuBLAS 列主序陷阱：为什么在 C/C++（行主序）里调用 cublasSgemm 算 C = A·B 时常“形状对但数值不对”？怎么正确调用？",
+    explanation: "cuBLAS 内部按列主序（Fortran 风格）解释矩阵。C/C++ 的 A[M][K] 行主序，在 cuBLAS 眼里被当成 A^T[K][M]。直接算 C=A·B 在行主序下，等价于按列主序算 C^T = B^T·A^T。正确做法是：按需设置 transa/transb（常需取转置并交换 A、B 的角色），并把 lda/ldb/ldc 设成行主序下的前导维度（通常是每行宽度），才能得到行主序的 C = A·B。不调 transpose 就会得到另一个矩阵的值。"
+  },
+  {
+    id: "ch07-q11", chapter: "ch07", type: "fill", difficulty: "⭐⭐",
+    question: "调用库函数的通用套路：① 创建 handle → ② 设置 ____（如 transpose/algo）→ ③ 准备设备内存与数据 → ④ 调用 API → ⑤ 拷回并与 CPU 参考实现____。",
+    accepts: ["参数|对拍", "参数|验证", "params|对比"],
+    explanation: "库调用套路：建 handle、设参数（transpose/algo/alpha/beta 等）、备数据、调 API、拷回结果与 CPU 参考实现对拍验证（数值必须验证，教程反复强调）。"
+  },
+  {
+    id: "ch07-q12", chapter: "ch07", type: "single", difficulty: "⭐⭐",
+    question: "跨平台方案里，把 CUDA 代码迁移到 AMD GPU 通常用？",
+    options: [
+      "HIP（把 CUDA 代码用 hipify 转换，API 与 CUDA 高度对应）",
+      "直接把 .cu 改成 .cpp 交给 gcc",
+      "只能用 OpenCL 重写，没有别的办法",
+      "必须用 Python 重写"
+    ],
+    answer: 0,
+    explanation: "教程的跨平台一节对比了 HIP / SYCL / OpenCL。HIP 与 CUDA API 高度对应，可用 hipify 工具自动转换（如 cudaMalloc → hipMalloc），是迁移到 AMD 最省力的路线。"
+  },
+
+  /* ===================== 第 8 章 ===================== */
+  {
+    id: "ch08-q1", chapter: "ch08", type: "single", difficulty: "⭐⭐",
+    question: "本章最重要的一句话是？",
+    options: [
+      "“能跑”就等于“做完了”",
+      "“能跑”不等于“做完了”。做完了的标志是你能拿出数据证明它为什么快、快在哪、还有多少余量",
+      "只要代码能编译就结业",
+      "性能报告可有可无"
+    ],
+    answer: 1,
+    explanation: "工业界标准是“别人能复现你的结果”。交付物四件套：README、性能报告、Profile 证据、正确性验证脚本。能跑只是把包裹交给了快递员，做完了是对方收到了且知道里面是什么。"
+  },
+  {
+    id: "ch08-q2", chapter: "ch08", type: "judge", difficulty: "⭐⭐",
+    question: "SGEMM 七级演进（v1→v7）与 cuBLAS 对比是本章的性能工程主线；教程建议不管选哪个项目都把 SGEMM 做一遍。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "SGEMM 是 GPU 优化技术的练兵场：v1 朴素→v2 全局分块→v3 共享内存分块→v4 线程分块→v5 float4 向量化→v6 双缓冲→v7 寄存器分块 8×8，配合 cuBLAS 参照。这些思路泛化到别的项目。"
+  },
+  {
+    id: "ch08-q3", chapter: "ch08", type: "multi", difficulty: "⭐⭐",
+    question: "一份“做完了”的交付物至少应包含哪些？（教程四件套）",
+    options: [
+      "README（依赖 + 构建 + 运行 + 预期输出）",
+      "性能报告（环境 + 基线 + 每步收益 + 最终指标）",
+      "Profile 证据（ncu/nsys 关键指标表或截图）",
+      "正确性验证脚本（一条命令跑完对拍，失败返回非零）"
+    ],
+    answer: [0, 1, 2, 3],
+    explanation: "四个交付物缺一不可：README 让陌生人能复现；性能报告让“快”可验证；Profile 证据证明瓶颈真被解决；正确性验证脚本保证优化没把结果改错。"
+  },
+  {
+    id: "ch08-q4", chapter: "ch08", type: "single", difficulty: "⭐⭐⭐",
+    question: "判断一个项目“做完了”的残酷标准是？",
+    options: [
+      "作者自己能跑出结果",
+      "把代码和报告发给一个陌生人（或干净机器），他能否在 30 分钟内跑出和你一样的数字",
+      "代码行数够多",
+      "使用了最新架构特性"
+    ],
+    answer: 1,
+    explanation: "可复现性才是“做完了”的判据：陌生人拿到代码能在 30 分钟内复现你的数字。这要求 README 清晰、依赖明确、验证脚本一键可跑。"
+  },
+  {
+    id: "ch08-q5", chapter: "ch08", type: "judge", difficulty: "⭐⭐⭐",
+    question: "N 体引力模拟项目里，共享内存分块 + 双缓冲是核心技巧，并用辛积分器与能量守恒来验证数值正确性。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "N 体每粒子要读所有其它粒子位置，用共享内存分块 + 双缓冲减少全局访存；辛积分器保证长期能量守恒，是验证“优化后还正确”的硬指标。"
+  },
+  {
+    id: "ch08-q6", chapter: "ch08", type: "single", difficulty: "⭐⭐⭐",
+    question: "光线追踪器（项目 2）通常每个像素由一个线程独立负责，它主要考察的是？",
+    options: [
+      "块间同步",
+      "每线程独立任务、分支发散、负载不均、常量内存（存放场景/光源）",
+      "全局原子争用直方图",
+      "稀疏矩阵格式选择"
+    ],
+    answer: 1,
+    explanation: "raytracer 是“每线程一任务”的典型：每个像素一条射线，递归求交、分支多（是否命中/阴影/反射）导致 warp 发散，场景数据适合放常量内存。考察的是与 GEMM 完全不同的工程能力。"
+  },
+  {
+    id: "ch08-q7", chapter: "ch08", type: "fill", difficulty: "⭐⭐⭐",
+    question: "性能报告里拆解“逐步收益”时，应为每一次优化单独记录____（如 ms / GBps / GFLOPS），并与上一步和最终____（如 cuBLAS）对照，才能说清“快在哪”。",
+    accepts: ["指标|基线", "数据|参照", "metrics|baseline"],
+    explanation: "逐步收益拆解：每次改动都记录可量化指标（耗时/带宽/算力），并与“上一步”和“最终基线（如 cuBLAS）”对照。没有量化数据，“我的优化很快”就是一句无法验证的话。"
+  },
+  {
+    id: "ch08-q8", chapter: "ch08", type: "multi", difficulty: "⭐⭐⭐",
+    question: "关于 SGEMM 七级演进，下列正确的有哪些？",
+    options: [
+      "v1 朴素全局内存版本，每线程重复读 A 的一整行",
+      "v3 引入共享内存分块（Tiling）减少全局访存",
+      "v5 用 float4 做向量化加载",
+      "v7 用寄存器分块 8×8 进一步减少共享内存访问"
+    ],
+    answer: [0, 1, 2, 3],
+    explanation: "四个描述都对应七级演进的关键点：v1 朴素（重复读）、v2 全局分块、v3 共享内存 Tiling、v4 线程分块、v5 float4 向量化、v6 双缓冲、v7 寄存器 8×8 分块。每一步都有可测的性能收益。"
+  },
+  {
+    id: "ch08-q9", chapter: "ch08", type: "judge", difficulty: "⭐⭐⭐",
+    question: "CNN 推理核（项目 4）难度最高，它要求你写出多种卷积实现并与 PyTorch 数值对齐，还可能涉及量化。",
+    options: ["正确", "错误"],
+    answer: 0,
+    explanation: "项目 4（★★★★★）要求手写卷积多种实现、与 PyTorch 对拍、处理量化，是最贴近深度学习岗位 JD 的项目，难度最高。"
+  },
+  {
+    id: "ch08-q10", chapter: "ch08", type: "short", difficulty: "⭐⭐⭐",
+    question: "为什么教程说“不管选哪个结业项目，SGEMM 都建议做一遍”？它练的是什么通用能力？",
+    explanation: "因为矩阵乘法是所有 GPU 优化技术的练兵场：你要依次用到分块（ch02）、共享内存与 bank conflict 消除、向量化加载（float4）、double buffering 流水线、寄存器压力与占用率权衡（ch02/04）。这些思想——把“每个元素单独取料”改成“一批元素共用一箱料”、用合并访存和复用隐藏延迟——在光线追踪、SpMV、stencil 等别的项目里会反复出现。做完 SGEMM，你就有了一套可迁移的优化语言。"
+  },
+  {
+    id: "ch08-q11", chapter: "ch08", type: "fill", difficulty: "⭐⭐",
+    question: "实时图像处理管线（项目 6）考察多流并发与 CUDA Graph，其目标是降低____（因为此时启动开销与拷贝/计算重叠比单点算力更重要）。",
+    accepts: ["端到端延迟", "end-to-end latency", "延迟"],
+    explanation: "项目 6 关心端到端延迟：用多流把传输与计算重叠、用 CUDA Graph 压缩启动开销，整体时延比单 kernel 峰值算力更关键。"
+  },
+  {
+    id: "ch08-q12", chapter: "ch08", type: "judge", difficulty: "⭐⭐",
+    question: "结业自检里，“代码能跑出正确结果”就已经达到结业标准，不需要性能报告和 profile 证据。",
+    options: ["正确", "错误"],
+    answer: 1,
+    explanation: "错。第 8 章的结业标准明确要求：可运行代码 + 有说服力的性能报告（环境信息、正确性验证、逐步收益拆解、ncu/nsys 数据）。只有“能跑”不构成交付，报告比代码本身更重要。"
+  },
+];
+
+/* ============================ 渲染与交互 ============================ */
+const TYPE_LABEL = { single:"单选题", multi:"多选题", judge:"判断题", fill:"代码填空", short:"简答题" };
+const state = {};
+
+/* 规范化答案：去掉所有空白、转小写，并把常见分隔符统一成 "|"。
+   这样"多个空"无论用  |  ,  ;  、  /  哪个分隔，都能对上同一个标准形式。 */
+function normalize(s){
+  return (s||"").replace(/\s+/g,"").toLowerCase().replace(/[,;，；、\/]/g,"|");
+}
+
+function buildFilters(){
+  const chSel = document.getElementById("chapter");
+  const seen = new Set();
+  QUIZ_DATA.forEach(q=>{
+    if(!seen.has(q.chapter)){
+      seen.add(q.chapter);
+      const o = document.createElement("option");
+      o.value = q.chapter; o.textContent = CHAPTERS[q.chapter] || q.chapter;
+      chSel.appendChild(o);
+    }
+  });
+}
+
+function matches(q){
+  const c = document.getElementById("chapter").value;
+  const t = document.getElementById("type").value;
+  return (c==="all"||q.chapter===c) && (t==="all"||q.type===t);
+}
+
+function render(){
+  const root = document.getElementById("quiz");
+  root.innerHTML = "";
+  const list = QUIZ_DATA.filter(matches);
+  if(!list.length){ root.innerHTML = '<div class="empty">该筛选条件下暂无题目（可在文件顶部 QUIZ_DATA 中补充）。</div>'; updateStats(); return; }
+  list.forEach(q=> root.appendChild(renderCard(q)));
+  updateStats();
+}
+
+function renderCard(q){
+  const card = document.createElement("div");
+  card.className = "card";
+  const st = state[q.id] || (state[q.id] = {answered:false, correct:false});
+
+  let meta = `<div class="meta"><span class="tag">${CHAPTERS[q.chapter]||q.chapter}</span>`+
+             `<span class="tag">${TYPE_LABEL[q.type]}</span>`+
+             `<span class="tag">难度 ${q.difficulty||"—"}</span></div>`;
+  let body = `<div class="q">${q.question}</div>`;
+
+  if(q.type==="single" || q.type==="judge" || q.type==="multi"){
+    if(q.type==="multi"){
+      body += `<div style="font-size:13px;color:var(--muted);margin:-6px 0 10px;">（多选题：可选中多个选项，选好后点“提交”）</div>`;
+    }
+    body += `<div class="options" id="opt-${q.id}">`+
+      q.options.map((o,i)=>`<div class="opt" data-i="${i}"><span class="mark">${String.fromCharCode(65+i)}</span><span>${o}</span></div>`).join("")+
+      `</div>`;
+  } else if(q.type==="fill"){
+    body += `<div class="fillrow"><input id="fill-${q.id}" placeholder="填写答案（忽略空格；多个空可用 | 或 , 分隔）"/><button class="btn" data-check="${q.id}">检查</button></div>`+
+            `<div class="feedback hidden" id="fb-${q.id}"></div>`;
+  } else if(q.type==="short"){
+    body += `<details class="short"><summary>显示参考答案</summary><div class="explain"><div class="h">参考答案</div>${q.explanation}</div></details>`;
+  }
+  if(q.type!=="short"){
+    body += `<div class="explain hidden" id="ex-${q.id}"><div class="h">解析</div>${q.explanation}</div>`;
+  }
+
+  card.innerHTML = meta + body;
+
+  if(q.type==="single" || q.type==="judge"){
+    card.querySelectorAll(".opt").forEach(el=>{
+      el.addEventListener("click", ()=>{
+        if(st.answered) return;
+        const i = +el.dataset.i;
+        st.answered = true; st.correct = (i===q.answer);
+        card.querySelectorAll(".opt").forEach(o=>{
+          const oi = +o.dataset.i;
+          if(oi===q.answer) o.classList.add("correct");
+          else if(oi===i) o.classList.add("wrong");
+          else o.classList.add("dim");
+        });
+        showExplain(q.id); updateStats();
+      });
+    });
+  } else if(q.type==="multi"){
+    card.querySelectorAll(".opt").forEach(el=>{
+      el.addEventListener("click", ()=>{
+        if(st.answered) return;
+        el.classList.toggle("picked");
+      });
+    });
+    const submit = document.createElement("button");
+    submit.className = "btn"; submit.textContent = "提交";
+    submit.style.marginTop = "12px";
+    submit.addEventListener("click", ()=>{
+      if(st.answered) return;
+      const picked = [...card.querySelectorAll(".opt.picked")].map(e=>+e.dataset.i).sort();
+      const ans = [...q.answer].sort();
+      const ok = picked.length===ans.length && picked.every((v,k)=>v===ans[k]);
+      st.answered = true; st.correct = ok;
+      card.querySelectorAll(".opt").forEach(o=>{
+        const oi = +o.dataset.i;
+        if(q.answer.includes(oi)) o.classList.add("correct");
+        else if(o.classList.contains("picked")) o.classList.add("wrong");
+        else o.classList.add("dim");
+      });
+      submit.remove();
+      showExplain(q.id); updateStats();
+    });
+    card.querySelector(".options").after(submit);
+  } else if(q.type==="fill"){
+    card.querySelector(`[data-check="${q.id}"]`).addEventListener("click", ()=>{
+      if(st.answered) return;
+      const val = normalize(document.getElementById(`fill-${q.id}`).value);
+      const ok = q.accepts.some(a=> a.split("###").map(normalize).includes(val));
+      st.answered = true; st.correct = ok;
+      const fb = document.getElementById(`fb-${q.id}`);
+      fb.classList.remove("hidden");
+      fb.className = "feedback " + (ok?"ok":"bad");
+      fb.innerHTML = ok ? "✅ 正确！" : "❌ 不正确。参考答案：<code>"+q.accepts[0].split("###")[0]+"</code>";
+      document.getElementById(`fill-${q.id}`).disabled = true;
+      showExplain(q.id); updateStats();
+    });
+  }
+  return card;
+}
+
+function showExplain(id){
+  const ex = document.getElementById("ex-"+id);
+  if(ex) ex.classList.remove("hidden");
+}
+
+function updateStats(){
+  const ids = QUIZ_DATA.filter(matches).map(q=>q.id);
+  let ans=0, cor=0;
+  ids.forEach(id=>{ const s=state[id]; if(s&&s.answered){ans++; if(s.correct)cor++;} });
+  const rate = ans? Math.round(cor/ans*100)+"%" : "—";
+  document.getElementById("stats").innerHTML =
+    `已答 <b>${ans}</b> / 正确 <b>${cor}</b> / 正确率 <b>${rate}</b>`;
+}
+
+document.getElementById("chapter").addEventListener("change", render);
+document.getElementById("type").addEventListener("change", render);
+document.getElementById("reset").addEventListener("click", ()=>{
+  Object.keys(state).forEach(k=>delete state[k]);
+  render();
+});
+
+buildFilters();
+render();
+</script>
+</body>
+</html>
