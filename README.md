@@ -144,12 +144,14 @@ CUDALearning/
 │       ├── raytracer/                 ← 并行光线追踪器
 │       ├── nbody/                     ← N 体模拟（含 5 个 TODO 的分步指引）
 │       └── cmake_skeleton/            ← 生产级 CMake 工程骨架（含 ctest）
+├── quizzes/                           ← 网页版习题（双击即可用，无需联网）
+│   └── cuda-quiz.html                 ← 全 9 章 180 题，含答案解析
 └── tools/                             ← 环境体检与维护脚本
     ├── check_env.sh / check_env.ps1   ← 一键环境体检
     ├── verify_all.ps1                 ← 批量编译校验所有示例
-    ├── fix_links.py                   ← 文档链接检查/修复
-    ├── cleanup.sh / cleanup.ps1       ← 目录重组残留清理（已完成使命）
-    └── reorganize.js                  ← 目录结构迁移工具（已完成使命）
+    ├── check_docs.ps1                 ← 文档一致性校验（可选 -Only ch02 只查某章）
+    ├── fix_blanks.ps1                 ← 清理 Markdown 中的连续空行
+    └── fix_links.py                   ← 文档链接检查/修复
 ```
 
 ---

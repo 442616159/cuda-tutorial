@@ -2,8 +2,8 @@
 #  fix_blanks.ps1 —— 清理 Markdown 中的连续空行
 #
 #  用法（在仓库根目录）：
-#      powershell -NoProfile -ExecutionPolicy Bypass -File code/tools/fix_blanks.ps1
-#      powershell ... -File code/tools/fix_blanks.ps1 -Only ch03
+#      powershell -NoProfile -ExecutionPolicy Bypass -File tools/fix_blanks.ps1
+#      powershell ... -File tools/fix_blanks.ps1 -Only ch03
 #
 #  说明：代码块内部的空行不受影响（围栏内的内容原样保留），
 #        只压缩正文中的连续空行。

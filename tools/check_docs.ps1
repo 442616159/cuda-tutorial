@@ -2,8 +2,8 @@
 #  check_docs.ps1 —— 文档一致性校验工具
 #
 #  用法（在仓库根目录）：
-#      pwsh -File code/tools/check_docs.ps1
-#      pwsh -File code/tools/check_docs.ps1 -Only ch02
+#      pwsh -File tools/check_docs.ps1
+#      pwsh -File tools/check_docs.ps1 -Only ch02
 #
 #  校验项：
 #    1. 代码围栏是否配对（``` 必须成对）

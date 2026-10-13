@@ -38,13 +38,15 @@ CUDALearning/
 │   │   ├── raytracer/
 │   │   └── nbody/
 │   └── CMakeLists.txt
+├── quizzes/                         # 网页版习题
+│   └── cuda-quiz.html
 └── tools/                           # 环境体检与维护脚本
     ├── check_env.sh
     ├── check_env.ps1
     ├── verify_all.ps1
-    ├── cleanup.sh / cleanup.ps1     # 重组残留清理
-    ├── fix_links.py
-    └── reorganize.js
+    ├── check_docs.ps1               # 文档一致性校验
+    ├── fix_blanks.ps1               # 清理连续空行
+    └── fix_links.py
 ```
 
 ## 路径深度速查（写 include 时最容易错的地方）
